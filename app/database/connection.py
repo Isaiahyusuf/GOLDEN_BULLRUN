@@ -1,9 +1,20 @@
+import asyncio
+import logging
 import os
 
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+
+
+DATABASE_CONNECT_ATTEMPTS = 5
+DATABASE_RETRY_DELAY_SECONDS = 1
+
+
+class DatabaseConnectionError(RuntimeError):
+    pass
 
 
 def normalize_database_url(value):
@@ -38,7 +49,7 @@ class Base(DeclarativeBase):
     pass
 
 
-async def init_db():
+async def _initialize_schema():
     from app.models.user import User
     from app.models.transaction import PointTransaction
     from app.models.duel import Duel
@@ -100,3 +111,28 @@ async def init_db():
             "ADD COLUMN IF NOT EXISTS leaderboard_snapshot "
             "JSON NOT NULL DEFAULT '[]'::json"
         ))
+
+
+async def init_db():
+    for attempt in range(1, DATABASE_CONNECT_ATTEMPTS + 1):
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            break
+        except OperationalError as exc:
+            if attempt == DATABASE_CONNECT_ATTEMPTS:
+                raise DatabaseConnectionError(
+                    "Could not connect to PostgreSQL after "
+                    f"{DATABASE_CONNECT_ATTEMPTS} attempts."
+                ) from exc
+
+            delay = DATABASE_RETRY_DELAY_SECONDS * (2 ** (attempt - 1))
+            logging.warning(
+                "PostgreSQL is not ready (attempt %s/%s); retrying in %s seconds.",
+                attempt,
+                DATABASE_CONNECT_ATTEMPTS,
+                delay,
+            )
+            await asyncio.sleep(delay)
+
+    await _initialize_schema()

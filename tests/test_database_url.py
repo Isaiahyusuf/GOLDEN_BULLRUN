@@ -42,6 +42,11 @@ def test_uses_default_when_database_url_is_blank():
     assert result == "postgresql+asyncpg://localhost/trumpty_royale"
 
 
+def test_uses_default_when_database_url_is_missing():
+    result = normalize_database_url(None)
+    assert result == "postgresql+asyncpg://localhost/trumpty_royale"
+
+
 def test_keeps_local_default_driver_compatible():
     result = normalize_database_url(
         "postgresql+asyncpg://localhost/trumpty_royale"

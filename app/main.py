@@ -94,32 +94,37 @@ async def weekly_reset_loop():
 async def main():
     logging.basicConfig(level=logging.INFO)
 
-    await init_db()
-
-    bot = Bot(token=settings.bot_token)
-    dp = Dispatcher()
-    dp.include_router(payments_router)
-    dp.include_router(router)
-    dp.include_router(groups_router)
-    dp.include_router(duels_router)
-
-    expiry_task = asyncio.create_task(expire_duels_loop(bot))
-    weekly_task = asyncio.create_task(weekly_reset_loop())
+    bot = None
+    background_tasks = []
 
     try:
+        await init_db()
+
+        bot = Bot(token=settings.bot_token)
+        dp = Dispatcher()
+        dp.include_router(payments_router)
+        dp.include_router(router)
+        dp.include_router(groups_router)
+        dp.include_router(duels_router)
+
+        background_tasks = [
+            asyncio.create_task(expire_duels_loop(bot)),
+            asyncio.create_task(weekly_reset_loop()),
+        ]
+
         me = await bot.get_me()
         logging.info("Starting as @%s", me.username)
         await dp.start_polling(bot)
     finally:
-        expiry_task.cancel()
-        weekly_task.cancel()
-        await asyncio.gather(
-            expiry_task,
-            weekly_task,
-            return_exceptions=True,
-        )
-        await bot.session.close()
-        await engine.dispose()
+        for task in background_tasks:
+            task.cancel()
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+        try:
+            if bot is not None:
+                await bot.session.close()
+        finally:
+            await engine.dispose()
 
 
 if __name__ == "__main__":
