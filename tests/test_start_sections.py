@@ -1,5 +1,10 @@
+import asyncio
+
+from aiogram.types import BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats
+
 from app.handlers import start
 from app.keyboards.main_menu import GROUP_PLAY_LORE, group_play_post, main_menu
+from app.main import BOT_COMMANDS, configure_bot_commands
 
 
 def test_about_and_how_to_play_are_available_from_main_menu():
@@ -11,7 +16,7 @@ def test_about_and_how_to_play_are_available_from_main_menu():
 
     assert "menu:about" in callbacks
     assert "menu:help" in callbacks
-    assert "<code>/duel @username 1000</code>" in start.SECTIONS["help"]
+    assert "<code>/pvp @username 100</code>" in start.SECTIONS["help"]
     assert "any group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
     assert "X post quiz" in start.SECTIONS["help"]
@@ -56,7 +61,7 @@ def test_duel_section_explains_group_pvp():
 def test_group_play_uses_local_group_pvp_and_keeps_shop_private():
     text = start.group_play_text()
 
-    assert "/duel @username 1000" in text
+    assert "/pvp @username 100" in text
     assert "Only that player can accept" in text
     assert "Purchases are handled privately" in text
     assert "PLAY IN PRIVATE CHAT" not in text
@@ -77,6 +82,37 @@ def test_group_play_posts_rotate_lore_with_arena_button():
     from app.main import GROUP_PLAY_POST_INTERVAL_SECONDS
 
     assert GROUP_PLAY_POST_INTERVAL_SECONDS == 600
+
+
+def test_telegram_group_and_private_command_menus_include_game_commands():
+    class FakeBot:
+        def __init__(self):
+            self.command_sets = []
+
+        async def set_my_commands(self, commands, scope):
+            self.command_sets.append((commands, scope))
+
+    async def run():
+        bot = FakeBot()
+        await configure_bot_commands(bot)
+        return bot.command_sets
+
+    command_sets = asyncio.run(run())
+    expected_commands = {
+        "start",
+        "menu",
+        "pvp",
+        "duel",
+        "profile",
+        "balance",
+        "missions",
+    }
+
+    assert len(command_sets) == 2
+    for commands, _ in command_sets:
+        assert expected_commands <= {command.command for command in commands}
+    assert isinstance(command_sets[0][1], BotCommandScopeAllGroupChats)
+    assert isinstance(command_sets[1][1], BotCommandScopeAllPrivateChats)
 
 
 def test_checkout_message_tracks_payment_configuration(monkeypatch):

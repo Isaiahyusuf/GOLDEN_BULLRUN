@@ -3,6 +3,11 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot, Dispatcher
+from aiogram.types import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllPrivateChats,
+)
 from sqlalchemy import select
 
 from app.config import settings
@@ -21,6 +26,35 @@ from app.services.weekly_rewards import get_completed_week_key
 
 
 GROUP_PLAY_POST_INTERVAL_SECONDS = 600
+BOT_COMMANDS = [
+    BotCommand(command="start", description="Register and open the game"),
+    BotCommand(command="menu", description="Show game menu"),
+    BotCommand(command="pvp", description="Challenge: /pvp @username 100"),
+    BotCommand(command="duel", description="Challenge a player (alias for /pvp)"),
+    BotCommand(command="profile", description="View your player profile"),
+    BotCommand(command="balance", description="Check your points"),
+    BotCommand(command="missions", description="View and answer the active X quiz"),
+    BotCommand(command="group_status", description="Check this group's bot setup"),
+    BotCommand(command="enable_announcements", description="Enable group announcements"),
+    BotCommand(command="disable_announcements", description="Disable group announcements"),
+    BotCommand(command="setraid", description="Start an X post quiz (admins)"),
+    BotCommand(command="stopraid", description="Stop the active X quiz (admins)"),
+    BotCommand(command="groups", description="List bot groups (bot admins)"),
+    BotCommand(command="help", description="How to play"),
+    BotCommand(command="about", description="About TRUMPTY ROYALE"),
+    BotCommand(command="cancel", description="Cancel the current quiz answer"),
+]
+
+
+async def configure_bot_commands(bot: Bot) -> None:
+    await bot.set_my_commands(
+        BOT_COMMANDS,
+        scope=BotCommandScopeAllGroupChats(),
+    )
+    await bot.set_my_commands(
+        BOT_COMMANDS,
+        scope=BotCommandScopeAllPrivateChats(),
+    )
 
 
 async def group_play_posts_loop(bot):
@@ -196,6 +230,7 @@ async def main():
         await init_db()
 
         bot = Bot(token=settings.bot_token)
+        await configure_bot_commands(bot)
         dp = Dispatcher()
         dp.include_router(payments_router)
         dp.include_router(raids_router)

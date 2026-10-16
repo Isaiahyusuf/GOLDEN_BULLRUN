@@ -2,6 +2,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from aiogram import Bot
+from aiogram.filters import Command
 from sqlalchemy import delete
 
 from app.database.connection import SessionLocal, engine, init_db
@@ -20,6 +22,21 @@ from app.services.duel_service import (
 GROUP_ID = -1001234567890
 CHALLENGER_ID = 990001001
 OPPONENT_ID = 990001002
+
+
+def test_pvp_and_duel_commands_are_both_accepted():
+    async def run():
+        bot = Bot(token="123456:ABC")
+        try:
+            command_filter = Command("pvp", "duel")
+            pvp = await command_filter.parse_command("/pvp @player 100", bot)
+            duel = await command_filter.parse_command("/duel @player 100", bot)
+            assert pvp.command.startswith("pvp")
+            assert duel.command.startswith("duel")
+        finally:
+            await bot.session.close()
+
+    asyncio.run(run())
 
 
 def run_async(coro):

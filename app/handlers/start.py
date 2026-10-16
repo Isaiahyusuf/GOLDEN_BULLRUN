@@ -50,7 +50,7 @@ SECTIONS = {
         "⚔️ <b>ROYALE ARENA</b>\n\n"
         "PvP is played right here in any group where the bot is present.\n\n"
         "Challenge a player with:\n"
-        "<code>/duel @username 1000</code>\n\n"
+        "<code>/pvp @username 100</code>\n\n"
         "Only the mentioned player can accept. Both wagers are reserved after "
         "they accept. Use /start in a group or in the bot to register.\n\n"
         "𝕏 X post quizzes are available with /missions in this group."
@@ -70,7 +70,7 @@ SECTIONS = {
         "🥊 <b>PVP ARENA</b>\n\n"
         "Duels are played in any group where the bot is present, not in private chat.\n\n"
         "Challenge a registered player with:\n"
-        "<code>/duel @username 1000</code>\n\n"
+        "<code>/pvp @username 100</code>\n\n"
         "Both players must have sent /start in a group or in the bot. Wagers must be "
         "between 1 and 1,000,000 points. The challenged player accepts the "
         "group challenge; only that mentioned player can accept, and both "
@@ -116,7 +116,7 @@ SECTIONS = {
         "the quiz in the group. A correct answer earns 200 points once per "
         "campaign; you have up to 3 attempts. No X engagement is required.\n"
         "5. <b>Play PvP:</b> in a group where the bot is present, challenge with "
-        "<code>/duel @username 1000</code>, replacing the username and wager. "
+        "<code>/pvp @username 100</code>, replacing the username and wager. "
         "Both players must register with /start in a group or the bot. "
         "Use the duel buttons to choose ATTACK or DEFEND each round.\n"
         "6. <b>Protect points:</b> view Points Protection for your rank, price, "
@@ -137,7 +137,7 @@ def group_play_text() -> str:
     return (
         "⚔️ <b>GROUP PvP</b>\n\n"
         "Challenge a player in this group with:\n"
-        "<code>/duel @username 1000</code>\n\n"
+        "<code>/pvp @username 100</code>\n\n"
         "Replace @username with their Telegram username and 1000 with the "
         "points you want to stake. Only that player can accept the challenge. "
         "Both players must register with /start in a group or the bot.\n\n"
@@ -499,14 +499,14 @@ async def group_play_callback(callback: CallbackQuery):
         await callback.answer("This game post is unavailable.", show_alert=True)
         return
     if callback.message.chat.type == "private":
-        await callback.answer("Use /duel in the game group to challenge a player.")
+        await callback.answer("Use /pvp in the game group to challenge a player.")
         return
 
     player = await register_player(callback.from_user)
     await callback.message.answer(
         f"⚔️ <b>THE ARENA IS OPEN, {escape(player['name'])}</b>\n\n"
         "Challenge your rival here:\n"
-        "<code>/duel @username 1000</code>\n\n"
+        "<code>/pvp @username 100</code>\n\n"
         "Replace the username and stake with your opponent and wager. "
         "Only the mentioned player can accept. Both players need to register "
         "with /start in a group or in the bot.",

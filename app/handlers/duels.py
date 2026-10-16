@@ -58,7 +58,7 @@ async def player_name(player_id: int) -> str:
         return player.full_name if player else str(player_id)
 
 
-@router.message(Command("duel"))
+@router.message(Command("pvp", "duel"))
 async def start_duel(message: Message):
     if message.chat.type not in GROUP_TYPES:
         await message.answer("Start PvP challenges in a group where the bot is present.")
@@ -70,8 +70,8 @@ async def start_duel(message: Message):
     parts = (message.text or "").split()
     if len(parts) != 3 or not parts[1].startswith("@"):
         await message.answer(
-            "Use: /duel @username points\n"
-            "Example: /duel @player 1000"
+            "Use: /pvp @username points\n"
+            "Example: /pvp @player 100"
         )
         return
 
