@@ -55,7 +55,10 @@ def test_duel_section_explains_group_pvp():
 
     assert "any group where the bot is present" in text
     assert "1,000,000 points" in text
-    assert "First to 2 round wins" in text
+    assert "100 HP" in text
+    assert "20 damage" in text
+    assert "one guard per battle" in text
+    assert "60 seconds" in text
 
 
 def test_group_play_uses_local_group_pvp_and_keeps_shop_private():
@@ -102,7 +105,6 @@ def test_telegram_group_and_private_command_menus_include_game_commands():
         "start",
         "menu",
         "pvp",
-        "duel",
         "profile",
         "balance",
         "missions",
@@ -111,6 +113,7 @@ def test_telegram_group_and_private_command_menus_include_game_commands():
     assert len(command_sets) == 2
     for commands, _ in command_sets:
         assert expected_commands <= {command.command for command in commands}
+        assert "duel" not in {command.command for command in commands}
     assert isinstance(command_sets[0][1], BotCommandScopeAllGroupChats)
     assert isinstance(command_sets[1][1], BotCommandScopeAllPrivateChats)
 

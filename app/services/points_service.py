@@ -11,6 +11,7 @@ async def register_player(telegram_user):
                 telegram_id=telegram_user.id,
                 username=telegram_user.username,
                 full_name=telegram_user.full_name,
+                is_bot=telegram_user.is_bot,
                 points=10_000,
             )
             .on_conflict_do_nothing(index_elements=[User.telegram_id])
@@ -24,6 +25,7 @@ async def register_player(telegram_user):
         player = result.scalar_one()
         player.username = telegram_user.username
         player.full_name = telegram_user.full_name
+        player.is_bot = telegram_user.is_bot
         if is_new:
             session.add(
                 PointTransaction(

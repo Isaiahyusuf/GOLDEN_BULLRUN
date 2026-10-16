@@ -21,6 +21,25 @@ class Duel(Base):
     winner_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     round_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    turn_player_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    challenger_health: Mapped[int] = mapped_column(
+        Integer, default=100, server_default="100", nullable=False
+    )
+    opponent_health: Mapped[int] = mapped_column(
+        Integer, default=100, server_default="100", nullable=False
+    )
+    challenger_guard_active: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
+    opponent_guard_active: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
+    challenger_guard_used: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
+    opponent_guard_used: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
     challenger_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     opponent_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     challenger_choice: Mapped[str | None] = mapped_column(String(10), nullable=True)

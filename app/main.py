@@ -30,7 +30,6 @@ BOT_COMMANDS = [
     BotCommand(command="start", description="Register and open the game"),
     BotCommand(command="menu", description="Show game menu"),
     BotCommand(command="pvp", description="Challenge: /pvp @username 100"),
-    BotCommand(command="duel", description="Challenge a player (alias for /pvp)"),
     BotCommand(command="profile", description="View your player profile"),
     BotCommand(command="balance", description="Check your points"),
     BotCommand(command="missions", description="View and answer the active X quiz"),
@@ -114,7 +113,7 @@ async def expire_duels_loop(bot):
                 else:
                     message = (
                         f"⌛ DUEL #{duel['duel_id']} EXPIRED\n\n"
-                        "The challenge was not accepted within 5 minutes."
+                        "The challenge was not accepted within 60 seconds."
                     )
 
                 try:

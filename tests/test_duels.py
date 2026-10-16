@@ -1,24 +1,28 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram import Bot
-from aiogram.enums import ChatType
+from aiogram.enums import ChatMemberStatus, ChatType
 from aiogram.filters import Command
 from sqlalchemy import delete
+from sqlalchemy.dialects.postgresql import insert
 
 from app.database.connection import SessionLocal, engine, init_db
 from app.models.daily_reward import DailyActivity
 from app.models.duel import Duel
+from app.models.group import TelegramGroup
 from app.models.transaction import PointTransaction
 from app.models.user import User
 from app.services.duel_service import (
     DuelError,
     accept_duel,
     create_duel,
+    decline_duel,
     expire_stale_duels,
-    submit_choice,
+    submit_move,
 )
 from app.handlers.duels import start_duel
 
@@ -27,15 +31,15 @@ CHALLENGER_ID = 990001001
 OPPONENT_ID = 990001002
 
 
-def test_pvp_and_duel_commands_are_both_accepted():
+def test_pvp_is_the_only_duel_command():
     async def run():
         bot = Bot(token="123456:ABC")
         try:
-            command_filter = Command("pvp", "duel")
-            pvp = await command_filter.parse_command("/pvp @player 100", bot)
-            duel = await command_filter.parse_command("/duel @player 100", bot)
-            assert pvp.command.startswith("pvp")
-            assert duel.command.startswith("duel")
+            parsed = await Command("pvp").parse_command(
+                "/pvp @player 100",
+                bot,
+            )
+            assert parsed.command.startswith("pvp")
         finally:
             await bot.session.close()
 
@@ -53,6 +57,7 @@ def test_unregistered_opponent_gets_start_registration_button():
         message.chat.type = ChatType.GROUP
         message.chat.id = GROUP_ID
         message.from_user.id = CHALLENGER_ID
+        message.from_user.is_bot = False
         message.text = "/pvp @newplayer 100"
         message.answer = AsyncMock()
 
@@ -60,7 +65,7 @@ def test_unregistered_opponent_gets_start_registration_button():
             "app.handlers.duels.SessionLocal",
             return_value=session_context,
         ):
-            await start_duel(message)
+            await start_duel(message, MagicMock())
 
         message.answer.assert_awaited_once()
         text = message.answer.await_args.args[0]
@@ -69,6 +74,53 @@ def test_unregistered_opponent_gets_start_registration_button():
         assert "tap Start below to register" in text
         assert button.text == "🚀 TAP START TO REGISTER"
         assert button.url == "https://t.me/TrumptyDumptybot?start=register"
+
+    asyncio.run(run())
+
+
+def test_stale_username_cannot_challenge_a_different_group_member():
+    async def run():
+        session = AsyncMock()
+        session.scalar.return_value = SimpleNamespace(
+            telegram_id=OPPONENT_ID,
+            username="oldplayer",
+            full_name="Registered Player",
+            is_bot=False,
+        )
+        session_context = MagicMock()
+        session_context.__aenter__ = AsyncMock(return_value=session)
+        session_context.__aexit__ = AsyncMock(return_value=False)
+        message = MagicMock()
+        message.chat.type = ChatType.GROUP
+        message.chat.id = GROUP_ID
+        message.from_user.id = CHALLENGER_ID
+        message.from_user.is_bot = False
+        message.from_user.username = "challenger"
+        message.from_user.full_name = "Challenger"
+        message.text = "/pvp @oldplayer 100"
+        message.answer = AsyncMock()
+        bot = MagicMock()
+        bot.get_chat_member = AsyncMock(
+            return_value=SimpleNamespace(
+                status=ChatMemberStatus.MEMBER,
+                user=SimpleNamespace(
+                    username="newplayer",
+                    is_bot=False,
+                ),
+            )
+        )
+
+        with patch(
+            "app.handlers.duels.SessionLocal",
+            return_value=session_context,
+        ):
+            await start_duel(message, bot)
+
+        message.answer.assert_awaited_once()
+        assert "couldn't verify that username" in (
+            message.answer.await_args.args[0]
+        )
+        assert message.answer.await_args.kwargs["reply_markup"].inline_keyboard
 
     asyncio.run(run())
 
@@ -89,6 +141,17 @@ async def reset_players():
 
     async with SessionLocal() as session:
         async with session.begin():
+            group_statement = insert(TelegramGroup).values(
+                chat_id=GROUP_ID,
+                title="PvP test group",
+                active=True,
+            )
+            await session.execute(
+                group_statement.on_conflict_do_update(
+                    index_elements=[TelegramGroup.chat_id],
+                    set_={"active": True},
+                )
+            )
             await session.execute(
                 delete(DailyActivity).where(
                     DailyActivity.telegram_id.in_(ids)
@@ -132,11 +195,24 @@ async def reset_players():
             ])
 
 
-def test_duels_can_start_in_any_group_without_a_group_id_setting():
+def test_duels_can_start_in_any_registered_group():
     other_group_id = -1009876543210
 
     async def run():
         await reset_players()
+        async with SessionLocal() as session:
+            async with session.begin():
+                statement = insert(TelegramGroup).values(
+                    chat_id=other_group_id,
+                    title="Second PvP test group",
+                    active=True,
+                )
+                await session.execute(
+                    statement.on_conflict_do_update(
+                        index_elements=[TelegramGroup.chat_id],
+                        set_={"active": True},
+                    )
+                )
         duel_id = await create_duel(
             CHALLENGER_ID,
             OPPONENT_ID,
@@ -146,6 +222,88 @@ def test_duels_can_start_in_any_group_without_a_group_id_setting():
         async with SessionLocal() as session:
             duel = await session.get(Duel, duel_id)
             assert duel.chat_id == other_group_id
+
+    run_async(run())
+
+
+def test_challenge_decline_is_limited_to_opponent_and_does_not_charge_points():
+    async def run():
+        await reset_players()
+        duel_id = await create_duel(
+            CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
+        )
+
+        with pytest.raises(DuelError, match="Only the challenged player"):
+            await decline_duel(duel_id, CHALLENGER_ID, GROUP_ID)
+
+        result = await decline_duel(duel_id, OPPONENT_ID, GROUP_ID)
+        assert result["status"] == "declined"
+        async with SessionLocal() as session:
+            duel = await session.get(Duel, duel_id)
+            a = await session.get(User, CHALLENGER_ID)
+            b = await session.get(User, OPPONENT_ID)
+            assert duel.status == "declined"
+            assert a.points == 10_000
+            assert b.points == 10_000
+
+    run_async(run())
+
+
+def test_only_opponent_can_accept_and_challenger_stake_is_not_reserved_early():
+    async def run():
+        await reset_players()
+        duel_id = await create_duel(
+            CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
+        )
+
+        with pytest.raises(DuelError, match="Only the challenged player"):
+            await accept_duel(duel_id, CHALLENGER_ID, GROUP_ID)
+
+        async with SessionLocal() as session:
+            duel = await session.get(Duel, duel_id)
+            a = await session.get(User, CHALLENGER_ID)
+            b = await session.get(User, OPPONENT_ID)
+            assert duel.status == "pending"
+            assert a.points == 10_000
+            assert b.points == 10_000
+
+    run_async(run())
+
+
+def test_accepting_expired_challenge_marks_it_expired_without_reserving_stakes():
+    async def run():
+        await reset_players()
+        duel_id = await create_duel(
+            CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
+        )
+        async with SessionLocal() as session:
+            async with session.begin():
+                duel = await session.get(Duel, duel_id)
+                duel.created_at = datetime.now(timezone.utc) - timedelta(
+                    seconds=61
+                )
+
+        with pytest.raises(DuelError, match="challenge has expired"):
+            await accept_duel(duel_id, OPPONENT_ID, GROUP_ID)
+
+        async with SessionLocal() as session:
+            duel = await session.get(Duel, duel_id)
+            a = await session.get(User, CHALLENGER_ID)
+            b = await session.get(User, OPPONENT_ID)
+            assert duel.status == "expired"
+            assert a.points == 10_000
+            assert b.points == 10_000
+
+    run_async(run())
+
+
+def test_active_challenge_blocks_duplicate_or_overlapping_challenges():
+    async def run():
+        await reset_players()
+        await create_duel(CHALLENGER_ID, OPPONENT_ID, 100, GROUP_ID)
+
+        with pytest.raises(DuelError, match="already has an active"):
+            await create_duel(OPPONENT_ID, CHALLENGER_ID, 100, GROUP_ID)
 
     run_async(run())
 
@@ -212,12 +370,20 @@ def test_recent_move_prevents_accepted_duel_expiry():
         duel_id = await create_duel(
             CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
         )
-        await accept_duel(duel_id, OPPONENT_ID, GROUP_ID)
+        with patch(
+            "app.services.duel_service.secrets.choice",
+            return_value=CHALLENGER_ID,
+        ):
+            await accept_duel(duel_id, OPPONENT_ID, GROUP_ID)
 
-        result = await submit_choice(
-            duel_id, CHALLENGER_ID, "attack", GROUP_ID, 1
+        result = await submit_move(
+            duel_id,
+            CHALLENGER_ID,
+            GROUP_ID,
+            1,
+            "attack",
         )
-        assert result["status"] == "waiting"
+        assert result["status"] == "next_turn"
 
         async with SessionLocal() as session:
             async with session.begin():
@@ -252,9 +418,7 @@ def test_pending_challenge_expires_without_deducting_points():
         async with SessionLocal() as session:
             async with session.begin():
                 duel = await session.get(Duel, duel_id)
-                duel.created_at = datetime.now(timezone.utc) - timedelta(
-                    minutes=6
-                )
+                duel.created_at = datetime.now(timezone.utc) - timedelta(seconds=61)
 
         expired = await expire_stale_duels()
         assert len(expired) == 1

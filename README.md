@@ -71,11 +71,17 @@ in a group; make the bot an administrator there if group-admin verification fail
 
 All active groups where the bot is present receive a rotating, lore-style Play
 post with an arena button every 10 minutes. PvP and game commands work in each
-group. Use `/pvp @username 100` to challenge a player; only that named player
-can accept. If the opponent is not registered, the group prompt includes a
-button to open the bot and tap Start to register. The bot publishes its command
-menu in all groups and private chats, so typing `/` shows the available
-commands. Purchases and payment checkout remain in the bot's private chat.
+registered group. Use `/pvp @username 100` to challenge a player; only that
+named player can accept or decline within 60 seconds. If the opponent is not
+registered, the group prompt includes a button to open the bot and tap Start.
+On acceptance, each player's stake is reserved. The battle starts with 100 HP
+each and alternates turns. ATTACK deals 20 damage; each player can use GUARD
+once to reduce the next hit by 10. The first player is chosen at random; the
+first to 0 HP loses. Either player can forfeit. An inactive battle expires
+after 15 minutes and refunds both stakes.
+The bot publishes its command menu in all groups and private chats, so typing
+`/` shows the available commands. Purchases and payment checkout remain in the
+bot's private chat.
 
 ## Payment and reward safety
 

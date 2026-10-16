@@ -76,6 +76,42 @@ async def _initialize_schema():
             "purchased_credits INTEGER NOT NULL DEFAULT 0"
         ))
         await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+            "is_bot BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "turn_player_id BIGINT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "challenger_health INTEGER NOT NULL DEFAULT 100"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "opponent_health INTEGER NOT NULL DEFAULT 100"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "challenger_guard_active BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "opponent_guard_active BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "challenger_guard_used BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
+            "opponent_guard_used BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "UPDATE duels SET turn_player_id = challenger_id "
+            "WHERE status = 'accepted' AND turn_player_id IS NULL"
+        ))
+        await conn.execute(text(
             "ALTER TABLE payments ADD COLUMN IF NOT EXISTS "
             "purchase_reference VARCHAR(36)"
         ))
