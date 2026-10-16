@@ -83,6 +83,9 @@ The bot publishes its command menu in all groups and private chats, so typing
 `/` shows the available commands. Purchases and payment checkout remain in the
 bot's private chat.
 
+The bot deletes its previous tracked arena post before publishing the next
+one. Give the bot permission to delete its own messages in each group.
+
 ## Payment and reward safety
 
 - Live payments must remain disabled until payment verification is reviewed.

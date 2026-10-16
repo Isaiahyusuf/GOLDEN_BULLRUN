@@ -21,6 +21,7 @@ from app.keyboards.main_menu import group_play_post
 from app.models.group import TelegramGroup
 from app.services.duel_service import expire_stale_duels
 from app.services.daily_rewards import settle_completed_daily_rewards
+from app.services.group_play_posts import replace_group_play_post
 from app.services.protection_service import recover_weekly_resets
 from app.services.weekly_rewards import get_completed_week_key
 
@@ -74,11 +75,11 @@ async def group_play_posts_loop(bot):
             text, reply_markup = group_play_post(cycle)
             for group_id in group_ids:
                 try:
-                    await bot.send_message(
+                    await replace_group_play_post(
+                        bot,
                         group_id,
                         text,
-                        reply_markup=reply_markup,
-                        parse_mode="HTML",
+                        reply_markup,
                     )
                 except Exception:
                     logging.exception(

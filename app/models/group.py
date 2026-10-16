@@ -16,6 +16,9 @@ class TelegramGroup(Base):
     announcements_enabled: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )
+    play_post_message_id: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True
+    )
     registered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

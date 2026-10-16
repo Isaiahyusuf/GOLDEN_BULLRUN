@@ -80,6 +80,10 @@ async def _initialize_schema():
             "is_bot BOOLEAN NOT NULL DEFAULT FALSE"
         ))
         await conn.execute(text(
+            "ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS "
+            "play_post_message_id BIGINT"
+        ))
+        await conn.execute(text(
             "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "
             "turn_player_id BIGINT"
         ))

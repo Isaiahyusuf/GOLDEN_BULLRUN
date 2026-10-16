@@ -11,6 +11,7 @@ from app.config import settings
 from app.database.connection import SessionLocal
 from app.keyboards.main_menu import group_play_post
 from app.models.group import TelegramGroup
+from app.services.group_play_posts import replace_group_play_post
 
 router = Router()
 GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
@@ -92,11 +93,11 @@ async def bot_group_membership(event: ChatMemberUpdated, bot: Bot):
                     "This group is registered. The arena is open.",
                     parse_mode="HTML",
                 )
-                await bot.send_message(
+                await replace_group_play_post(
+                    bot,
                     event.chat.id,
                     post_text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML",
+                    keyboard,
                 )
             except Exception:
                 logging.exception(
