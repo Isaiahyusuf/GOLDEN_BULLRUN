@@ -6,6 +6,7 @@ from sqlalchemy import delete
 
 from app.config import settings
 from app.database.connection import SessionLocal, engine, init_db
+from app.models.daily_reward import DailyActivity
 from app.models.duel import Duel
 from app.models.transaction import PointTransaction
 from app.models.user import User
@@ -38,6 +39,11 @@ async def reset_players():
 
     async with SessionLocal() as session:
         async with session.begin():
+            await session.execute(
+                delete(DailyActivity).where(
+                    DailyActivity.telegram_id.in_(ids)
+                )
+            )
             await session.execute(
                 delete(PointTransaction).where(
                     PointTransaction.telegram_id.in_(ids)

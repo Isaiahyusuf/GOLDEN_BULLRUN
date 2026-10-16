@@ -42,9 +42,7 @@ async def save_group(chat):
 )
 async def record_daily_activity(message: Message):
     if (
-        settings.pvp_group_id is None
-        or message.chat.id != settings.pvp_group_id
-        or message.from_user is None
+        message.from_user is None
         or message.from_user.is_bot
         or not message.text
     ):

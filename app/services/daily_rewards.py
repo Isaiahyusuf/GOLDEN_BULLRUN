@@ -4,7 +4,6 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database.connection import SessionLocal
 from app.models.daily_reward import DailyActivity, DailyRewardSettlement
 from app.models.transaction import PointTransaction
@@ -32,9 +31,6 @@ def activity_score(
 
 
 async def record_group_message(telegram_id: int, now: datetime | None = None) -> bool:
-    if settings.pvp_group_id is None:
-        return False
-
     now = now or datetime.now(timezone.utc)
     day_key = now.date()
 

@@ -1,5 +1,6 @@
 from datetime import date
 import asyncio
+from unittest.mock import AsyncMock
 
 from app.services.daily_rewards import (
     DAILY_REWARD_LADDER,
@@ -58,3 +59,41 @@ def test_daily_settlement_returns_nothing_if_already_settled(monkeypatch):
         "already_settled": True,
         "winners": [],
     }
+
+
+def test_group_activity_is_not_gated_by_pvp_group_id(monkeypatch):
+    from datetime import datetime, timezone
+
+    from app.config import settings
+    from app.services.daily_rewards import record_group_message
+
+    class Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+        def begin(self):
+            return self
+
+        scalar = AsyncMock(side_effect=[123, 123])
+
+    class SessionMaker:
+        def __call__(self):
+            return Session()
+
+    monkeypatch.setattr(settings, "pvp_group_id", None)
+    monkeypatch.setattr(
+        "app.services.daily_rewards.SessionLocal",
+        SessionMaker(),
+    )
+
+    recorded = asyncio.run(
+        record_group_message(
+            123,
+            now=datetime(2026, 10, 16, 12, tzinfo=timezone.utc),
+        )
+    )
+
+    assert recorded is True

@@ -111,11 +111,18 @@ SECTIONS = {
 
 
 def get_section_text(section: str) -> str:
-    if section in {"duel", "rewards"} and settings.pvp_group_id is None:
+    if section == "duel" and settings.pvp_group_id is None:
         return (
             SECTIONS[section]
-            + "\n\n🔴 <b>PvP and daily group activity rewards are currently unavailable.</b>\n"
+            + "\n\n🔴 <b>PvP is currently unavailable.</b>\n"
             "The official group has not been configured for the bot yet."
+        )
+    if section == "rewards" and settings.pvp_group_id is None:
+        return (
+            SECTIONS[section]
+            + "\n\nGroup messages count in any group where the bot is present. "
+            "PvP activity bonuses are unavailable until the official PvP group "
+            "is configured."
         )
     return SECTIONS[section]
 
