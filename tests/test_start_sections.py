@@ -12,9 +12,25 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     assert "menu:about" in callbacks
     assert "menu:help" in callbacks
     assert "<code>/duel @username wager</code>" in start.SECTIONS["help"]
+    assert "any group where the bot is present" in start.SECTIONS["help"]
+    assert "00:00 UTC" in start.SECTIONS["help"]
     assert "Missions and weekly token reward payouts are not available yet." in (
         start.SECTIONS["help"]
     )
+
+
+def test_about_explains_daily_rewards_across_groups():
+    assert "every group where the bot is present" in start.SECTIONS["about"]
+    assert "500, 350, 250, 150, or 100 points" in start.SECTIONS["about"]
+
+
+def test_rewards_explains_all_group_activity_without_pvp_configuration(monkeypatch):
+    monkeypatch.setattr(start.settings, "pvp_group_id", None)
+
+    text = start.get_section_text("rewards")
+
+    assert "every group where the bot is present" in text
+    assert "PvP activity bonuses are unavailable" in text
 
 
 def test_support_button_opens_configured_telegram_username():
