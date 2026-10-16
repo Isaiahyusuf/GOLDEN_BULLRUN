@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 
 from aiogram import Bot, Dispatcher
@@ -9,6 +10,7 @@ from aiogram.types import (
     BotCommandScopeAllPrivateChats,
 )
 from sqlalchemy import select
+from aiohttp import web
 
 from app.config import settings
 from app.database.connection import SessionLocal, engine, init_db
@@ -26,10 +28,16 @@ from app.services.group_scheduled_posts import (
     HOW_TO_PLAY_POST_SECONDS,
     RAID_ADMIN_REMINDER_SECONDS,
     post_hourly_how_to_play,
+    post_protection_reset_reminders,
+    due_protection_reset_week,
     remind_group_admins_to_start_raids,
 )
 from app.services.protection_service import recover_weekly_resets
 from app.services.weekly_rewards import get_completed_week_key
+from app.services.x_oauth_service import (
+    create_x_oauth_web_app,
+    x_oauth_configured,
+)
 
 
 GROUP_PLAY_POST_INTERVAL_SECONDS = 600
@@ -40,6 +48,7 @@ BOT_COMMANDS = [
     BotCommand(command="profile", description="View your player profile"),
     BotCommand(command="balance", description="Check your points"),
     BotCommand(command="missions", description="View and answer the active X quiz"),
+    BotCommand(command="unlinkx", description="Disconnect your X account"),
     BotCommand(command="group_status", description="Check this group's bot setup"),
     BotCommand(command="enable_announcements", description="Enable group announcements"),
     BotCommand(command="disable_announcements", description="Disable group announcements"),
@@ -123,6 +132,26 @@ async def hourly_how_to_play_loop(bot):
             raise
         except Exception:
             logging.exception("Hourly How to Play post cycle failed")
+
+
+async def protection_reset_reminders_loop(bot):
+    while True:
+        try:
+            week_key = due_protection_reset_week()
+            if week_key is not None:
+                sent = await post_protection_reset_reminders(bot, week_key)
+                if sent:
+                    logging.info(
+                        "Posted %s protection reset reminders for %s",
+                        sent,
+                        week_key,
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.exception("Protection reset reminder cycle failed")
+
+        await asyncio.sleep(60)
 
 
 async def expire_duels_loop(bot):
@@ -254,12 +283,34 @@ async def main():
     logging.basicConfig(level=logging.INFO)
 
     bot = None
+    oauth_runner = None
     background_tasks = []
 
     try:
         await init_db()
 
         bot = Bot(token=settings.bot_token)
+        x_config_values = (
+            settings.x_api_client_id,
+            settings.x_api_redirect_uri,
+            settings.x_api_token_encryption_key,
+            settings.x_api_client_secret,
+        )
+        if any(x_config_values) and not x_oauth_configured():
+            logging.error(
+                "X OAuth configuration is incomplete; X quiz claims remain disabled."
+            )
+        elif x_oauth_configured():
+            oauth_runner = web.AppRunner(create_x_oauth_web_app(bot))
+            await oauth_runner.setup()
+            site = web.TCPSite(
+                oauth_runner,
+                host="0.0.0.0",
+                port=int(os.getenv("PORT", "8080")),
+            )
+            await site.start()
+            logging.info("X OAuth callback server started")
+
         await configure_bot_commands(bot)
         dp = Dispatcher()
         dp.include_router(payments_router)
@@ -272,6 +323,7 @@ async def main():
             asyncio.create_task(group_play_posts_loop(bot)),
             asyncio.create_task(raid_admin_reminders_loop(bot)),
             asyncio.create_task(hourly_how_to_play_loop(bot)),
+            asyncio.create_task(protection_reset_reminders_loop(bot)),
             asyncio.create_task(expire_duels_loop(bot)),
             asyncio.create_task(daily_rewards_loop(bot)),
             asyncio.create_task(weekly_reset_loop()),
@@ -286,6 +338,8 @@ async def main():
         if background_tasks:
             await asyncio.gather(*background_tasks, return_exceptions=True)
         try:
+            if oauth_runner is not None:
+                await oauth_runner.cleanup()
             if bot is not None:
                 await bot.session.close()
         finally:

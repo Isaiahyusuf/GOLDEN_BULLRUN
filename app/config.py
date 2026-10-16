@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     solana_rpc_url: str | None = None
     trumpty_token_mint: str | None = None
     payment_wallet_address: str | None = None
+    x_api_client_id: str | None = None
+    x_api_client_secret: str | None = None
+    x_api_redirect_uri: str | None = None
+    x_api_token_encryption_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

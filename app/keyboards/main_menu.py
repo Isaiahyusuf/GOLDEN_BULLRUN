@@ -104,8 +104,23 @@ def private_protection_link():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="🛡️ VIEW POINTS PROTECTION",
+                text="🛡️ BUY / RENEW PROTECTION",
                 url="https://t.me/TrumptyDumptybot?start=protect",
+            )]
+        ]
+    )
+
+
+def private_x_connect_link():
+    return "https://t.me/TrumptyDumptybot?start=connectx"
+
+
+def x_authorization_menu(authorization_url: str):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="𝕏 AUTHORIZE X ACCOUNT",
+                url=authorization_url,
             )]
         ]
     )

@@ -16,6 +16,7 @@ QUIZ_REWARD_POINTS = 200
 MAX_QUIZ_ATTEMPTS = 3
 MAX_QUESTION_LENGTH = 500
 MAX_ANSWER_LENGTH = 200
+REQUIRED_X_ACTIONS = ("like", "repost", "reply", "follow")
 
 
 class XRaidError(Exception):
@@ -64,10 +65,15 @@ async def get_claim_status(campaign_id: int, telegram_id: int) -> dict:
     async with SessionLocal() as session:
         claim = await session.get(XRaidClaim, (campaign_id, telegram_id))
         if claim is None:
-            return {"awarded_points": 0, "attempts": 0}
+            return {
+                "awarded_points": 0,
+                "attempts": 0,
+                "verified_actions": {},
+            }
         return {
             "awarded_points": claim.awarded_points,
             "attempts": claim.attempts,
+            "verified_actions": claim.verified_actions,
         }
 
 
@@ -127,9 +133,17 @@ async def submit_quiz_answer(
     campaign_id: int,
     telegram_id: int,
     answer: str,
+    verified_actions: dict[str, bool],
 ) -> dict:
     if not answer.strip() or len(answer) > MAX_ANSWER_LENGTH:
         raise XRaidError("Send a quiz answer of 1 to 200 characters.")
+    if not isinstance(verified_actions, dict) or any(
+        not isinstance(verified_actions.get(action), bool)
+        for action in REQUIRED_X_ACTIONS
+    ):
+        raise XRaidError(
+            "Like, Repost, Reply, and Follow must all be verified before claiming."
+        )
 
     now = datetime.now(timezone.utc)
     async with SessionLocal() as session:
@@ -205,6 +219,13 @@ async def submit_quiz_answer(
                     "attempts_left": MAX_QUIZ_ATTEMPTS - claim.attempts,
                 }
 
+            if not all(verified_actions[action] for action in REQUIRED_X_ACTIONS):
+                raise XRaidError(
+                    "Like, Repost, Reply, and Follow must all be verified before claiming."
+                )
+
+            claim.verified_actions = verified_actions
+            claim.last_checked_at = now
             claim.awarded_points = QUIZ_REWARD_POINTS
             player.points += QUIZ_REWARD_POINTS
             session.add(
@@ -219,3 +240,73 @@ async def submit_quiz_answer(
                 "points_awarded": QUIZ_REWARD_POINTS,
                 "attempts_left": MAX_QUIZ_ATTEMPTS - claim.attempts,
             }
+
+
+async def is_quiz_answer_correct(campaign_id: int, answer: str) -> bool:
+    if not answer.strip() or len(answer) > MAX_ANSWER_LENGTH:
+        raise XRaidError("Send a quiz answer of 1 to 200 characters.")
+
+    campaign = await get_active_campaign()
+    if campaign is None or campaign.id != campaign_id:
+        raise XRaidError("That raid has ended. Open Missions for the current quiz.")
+    if not campaign.quiz_question or not campaign.quiz_answer_hash:
+        raise XRaidError("This raid quiz is not configured. Please try again later.")
+    return hmac.compare_digest(
+        _answer_hash(answer),
+        campaign.quiz_answer_hash,
+    )
+
+
+async def record_verified_actions(
+    campaign_id: int,
+    telegram_id: int,
+    verified_actions: dict[str, bool],
+) -> None:
+    if not isinstance(verified_actions, dict) or any(
+        not isinstance(verified_actions.get(action), bool)
+        for action in REQUIRED_X_ACTIONS
+    ):
+        raise XRaidError("The X action check returned invalid results.")
+
+    now = datetime.now(timezone.utc)
+    async with SessionLocal() as session:
+        async with session.begin():
+            campaign = await session.scalar(
+                select(XRaidCampaign)
+                .where(
+                    XRaidCampaign.id == campaign_id,
+                    XRaidCampaign.active.is_(True),
+                )
+                .with_for_update()
+            )
+            if campaign is None:
+                raise XRaidError(
+                    "That raid has ended. Open Missions for the current quiz."
+                )
+
+            if await session.get(User, telegram_id) is None:
+                raise XRaidError("Send /start before claiming raid points.")
+
+            await session.execute(
+                insert(XRaidClaim)
+                .values(
+                    campaign_id=campaign_id,
+                    telegram_id=telegram_id,
+                    verified_actions=verified_actions,
+                    awarded_points=0,
+                    attempts=0,
+                    last_checked_at=now,
+                    updated_at=now,
+                )
+                .on_conflict_do_update(
+                    index_elements=[
+                        XRaidClaim.campaign_id,
+                        XRaidClaim.telegram_id,
+                    ],
+                    set_={
+                        "verified_actions": verified_actions,
+                        "last_checked_at": now,
+                        "updated_at": now,
+                    },
+                )
+            )

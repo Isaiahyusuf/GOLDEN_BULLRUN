@@ -59,6 +59,7 @@ async def _initialize_schema():
     from app.models.reward import WeeklyRewardPool, WeeklyRewardPayout
     from app.models.daily_reward import DailyActivity, DailyRewardSettlement
     from app.models.x_raid import XRaidCampaign, XRaidClaim
+    from app.models.x_account import XAccountLink, XOAuthState
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -82,6 +83,10 @@ async def _initialize_schema():
         await conn.execute(text(
             "ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS "
             "play_post_message_id BIGINT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS "
+            "protection_reminder_week VARCHAR(32)"
         ))
         await conn.execute(text(
             "ALTER TABLE duels ADD COLUMN IF NOT EXISTS "

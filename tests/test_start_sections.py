@@ -20,9 +20,9 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     assert "any active group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
     assert "X post quizzes" in start.SECTIONS["help"]
-    assert "No likes, reposts, replies, or follows are required" in (
-        start.SECTIONS["help"]
-    )
+    assert "Like and Repost the campaign post" in start.SECTIONS["help"]
+    assert "Reply to it" in start.SECTIONS["help"]
+    assert "Follow its author" in start.SECTIONS["help"]
     assert "Weekly token payouts are not available yet." in start.SECTIONS["help"]
 
 
@@ -36,6 +36,7 @@ def test_rewards_explains_all_group_activity_and_pvp():
 
     assert "every group where the bot is present" in text
     assert "PvP works in any group where the bot is present" in text
+    assert "Purchased credits do not count as competitive points" not in text
 
 
 def test_support_button_opens_configured_telegram_username():
@@ -48,6 +49,15 @@ def test_support_button_opens_configured_telegram_username():
 
     assert len(support_buttons) == 1
     assert support_buttons[0].url == "https://t.me/WitheringGrass13"
+
+
+def test_protection_link_opens_private_protection_purchase_flow():
+    from app.keyboards.main_menu import private_protection_link
+
+    button = private_protection_link().inline_keyboard[0][0]
+
+    assert button.text == "🛡️ BUY / RENEW PROTECTION"
+    assert button.url == "https://t.me/TrumptyDumptybot?start=protect"
 
 
 def test_duel_section_explains_group_pvp():
@@ -108,6 +118,7 @@ def test_telegram_group_and_private_command_menus_include_game_commands():
         "profile",
         "balance",
         "missions",
+        "unlinkx",
     }
 
     assert len(command_sets) == 2

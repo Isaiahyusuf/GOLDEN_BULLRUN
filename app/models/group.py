@@ -19,6 +19,9 @@ class TelegramGroup(Base):
     play_post_message_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True
     )
+    protection_reminder_week: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     registered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

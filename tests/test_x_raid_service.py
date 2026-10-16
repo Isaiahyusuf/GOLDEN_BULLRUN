@@ -32,9 +32,15 @@ def test_quiz_answer_matching_ignores_case_and_extra_whitespace():
     assert x_raid_service._answer_hash("gold") != x_raid_service._answer_hash("silver")
 
 
-def test_campaign_rewards_are_not_x_engagement_rewards():
+def test_campaign_reward_requires_all_x_engagement_actions():
     assert x_raid_service.QUIZ_REWARD_POINTS == 200
     assert x_raid_service.MAX_QUIZ_ATTEMPTS == 3
+    assert x_raid_service.REQUIRED_X_ACTIONS == (
+        "like",
+        "repost",
+        "reply",
+        "follow",
+    )
 
 
 def test_raid_quiz_prompts_force_reply_for_group_privacy_mode():
@@ -110,6 +116,7 @@ def test_quiz_claim_awards_once_and_locks_after_three_wrong_answers():
         "correct_status": "correct",
         "repeat_status": "already_claimed",
         "locked_status": "locked",
+        "incomplete_actions_rejected": True,
         "correct_player_points": 1_200,
         "locked_player_points": 1_000,
         "claim_points": 200,
@@ -176,16 +183,29 @@ async def _quiz_claim_run(correct_player_id: int, locked_player_id: int) -> dict
         campaign.id,
         correct_player_id,
         "red",
+        {action: False for action in x_raid_service.REQUIRED_X_ACTIONS},
     )
+    incomplete_actions_rejected = False
+    try:
+        await x_raid_service.submit_quiz_answer(
+            campaign.id,
+            correct_player_id,
+            "Royal Blue",
+            {action: False for action in x_raid_service.REQUIRED_X_ACTIONS},
+        )
+    except x_raid_service.XRaidError:
+        incomplete_actions_rejected = True
     correct = await x_raid_service.submit_quiz_answer(
         campaign.id,
         correct_player_id,
         " ROYAL   BLUE ",
+        {action: True for action in x_raid_service.REQUIRED_X_ACTIONS},
     )
     repeat = await x_raid_service.submit_quiz_answer(
         campaign.id,
         correct_player_id,
         "royal blue",
+        {action: True for action in x_raid_service.REQUIRED_X_ACTIONS},
     )
 
     for answer in ("one", "two", "three", "four"):
@@ -193,6 +213,7 @@ async def _quiz_claim_run(correct_player_id: int, locked_player_id: int) -> dict
             campaign.id,
             locked_player_id,
             answer,
+            {action: False for action in x_raid_service.REQUIRED_X_ACTIONS},
         )
 
     async with SessionLocal() as session:
@@ -208,6 +229,7 @@ async def _quiz_claim_run(correct_player_id: int, locked_player_id: int) -> dict
                 "correct_status": correct["status"],
                 "repeat_status": repeat["status"],
                 "locked_status": locked["status"],
+                "incomplete_actions_rejected": incomplete_actions_rejected,
                 "correct_player_points": correct_player.points,
                 "locked_player_points": locked_player.points,
                 "claim_points": claim.awarded_points,

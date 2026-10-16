@@ -12,11 +12,16 @@ from app.keyboards.main_menu import (
     private_shop_link,
     private_protection_link,
     protection_menu,
+    x_authorization_menu,
 )
 from app.services.points_service import register_player, get_player
 from app.services.leaderboard_service import get_leaderboard
 from app.services.protection_service import get_protection_status
 from app.services.solana_service import payments_configured
+from app.services.x_oauth_service import (
+    XOAuthError,
+    create_x_authorization_url,
+)
 
 router = Router()
 
@@ -40,8 +45,8 @@ SECTIONS = {
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
         "🥊 Duels are played in any group where the bot is present.\n"
-        "𝕏 X post quizzes award competitive points for correct answers in the "
-        "group or bot. No X engagement is required.\n\n"
+        "𝕏 X post quizzes award competitive points after a correct answer and "
+        "verified Like, Repost, Reply, and Follow actions.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
         "UTC day, the top five earn 500, 350, 250, 150, or 100 points.\n\n"
         "Payments are verified on Solana. Never send a seed phrase or private key."
@@ -59,8 +64,8 @@ SECTIONS = {
     "missions": (
         "🎯 <b>X RAID MISSIONS</b>\n\n"
         "View the active X post quiz and submit your answer here in the group. "
-        "A correct answer earns 200 competitive points; no X engagement is "
-        "required."
+        "A correct answer earns 200 competitive points after your linked X "
+        "account completes the campaign's Like, Repost, Reply, and Follow actions."
     ),
     "leaderboard": (
         "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
@@ -98,10 +103,10 @@ SECTIONS = {
         "Duels also give each player +25 points; the winner gets +50 extra, "
         "up to 5 completed duels daily. PvP works in any group where the bot "
         "is present.\n\n"
-        "Only message counts and timestamps are stored, not message text. "
-        "Purchased credits do not count as competitive points.\n\n"
+        "Only message counts and timestamps are stored, not message text.\n\n"
         "X post quizzes award 200 points for one correct answer per campaign. "
-        "No likes, reposts, replies, or follows are required. "
+        "A linked X account must Like and Repost the campaign post, Reply to "
+        "it, and Follow its author before the points are awarded. "
         "Weekly token reward payouts are not available yet."
     ),
     "help": (
@@ -138,10 +143,12 @@ SECTIONS = {
         "duels per player each day.\n\n"
         "<b>5. Play X post quizzes</b>\n"
         "Use /missions to view the active X post and quiz. Read the post, tap "
-        "the answer button, then reply with your answer. A correct answer earns "
-        "200 competitive points once per campaign; you have up to three "
-        "attempts. No likes, reposts, replies, or follows are required. A group "
-        "administrator can start a quiz with "
+        "the answer button, then reply with your answer. Before claiming, "
+        "connect your X account and Like and Repost the campaign post, Reply "
+        "to it, and Follow its author. After all four actions are verified, "
+        "a correct answer earns 200 competitive points once per campaign; "
+        "you have up to three answer attempts. Use /unlinkx to disconnect. "
+        "A group administrator can start a quiz with "
         "<code>/setraid https://x.com/name/status/POST_ID | question | answer</code> "
         "and stop it with /stopraid.\n\n"
         "<b>6. Shop and protect your account</b>\n"
@@ -293,6 +300,24 @@ async def start_command(message: Message):
 
     if start_arg == "protect":
         await send_protection_screen(message, message.from_user.id)
+        return
+
+    if start_arg == "connectx":
+        try:
+            authorization_url = await create_x_authorization_url(
+                message.from_user.id
+            )
+        except XOAuthError as exc:
+            await message.answer(str(exc))
+            return
+        await message.answer(
+            "🔗 <b>Connect your X account</b>\n\n"
+            "Authorize TRUMPTY ROYALE to read your liked posts, reposts, "
+            "replies, follows, and public profile. The bot will never post "
+            "or follow on your behalf.",
+            reply_markup=x_authorization_menu(authorization_url),
+            parse_mode="HTML",
+        )
         return
 
     if start_arg == "missions":

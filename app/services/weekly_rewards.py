@@ -11,7 +11,7 @@ from app.models.transaction import PointTransaction
 from app.models.user import User
 from app.services.historical_leaderboard import (
     HistoricalLedgerError,
-    reconstruct_leaderboard_from_ledger,
+    rank_weekly_earnings_from_ledger,
 )
 
 
@@ -292,18 +292,22 @@ async def create_weekly_reward_snapshot(week_key):
                 transactions = list(
                     (
                         await session.scalars(
-                            select(PointTransaction).order_by(
-                                PointTransaction.id.asc()
+                            select(PointTransaction)
+                            .where(
+                                PointTransaction.created_at >= week_start,
+                                PointTransaction.created_at < week_end,
                             )
+                            .order_by(PointTransaction.id.asc())
                         )
                     ).all()
                 )
 
                 try:
-                    snapshot = reconstruct_leaderboard_from_ledger(
+                    snapshot = rank_weekly_earnings_from_ledger(
                         users,
                         transactions,
-                        cutoff=week_end,
+                        week_start=week_start,
+                        week_end=week_end,
                         limit=10,
                     )
                 except HistoricalLedgerError:

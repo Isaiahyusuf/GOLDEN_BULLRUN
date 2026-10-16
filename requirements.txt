@@ -11,6 +11,7 @@ arrow==1.4.0
 asyncpg==0.32.0
 attrs==26.1.0
 certifi==2026.7.22
+cryptography==46.0.7
 construct==2.10.70
 construct-typing==0.8.1
 frozenlist==1.8.0

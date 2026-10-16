@@ -1,7 +1,7 @@
 # TRUMPTY ROYALE
 
 Telegram group PvP game bot with points, duels, points protection,
-weekly leaderboard snapshots, and manually settled weekly rewards.
+weekly earned-point rankings, and manually settled weekly rewards.
 
 ## Requirements
 
@@ -49,10 +49,17 @@ Do not expose `.env`, bot tokens, database credentials, or RPC credentials.
 
 ## X raid missions
 
-X missions link to an X post and ask a question about it. Players answer the
-quiz in the group or the bot; a correct answer awards 200 competitive points
-once per campaign, with up to three attempts. Points are awarded for the quiz
-only; liking, reposting, replying to, or following an X account is not required.
+X missions link to an X post and ask a question about it. Before points can be
+awarded, players must connect their X account, Like and Repost the campaign
+post, Reply to it, Follow its author, and answer the quiz correctly. A
+successful claim awards 200 competitive points once per campaign. Incorrect
+answers allow up to three attempts; incomplete engagement does not consume an
+answer attempt. X access failures do not award points.
+
+Weekly reward rankings are based on gross eligible points awarded during the
+week: welcome bonuses, quiz rewards, daily rewards, duel activity rewards, and
+duel prizes. Spending points does not reduce this score. Timeout refunds and
+automatic weekly-reset adjustments are not counted as earnings.
 
 An admin starts a quiz in any group where the bot is present with:
 
@@ -62,7 +69,33 @@ An admin starts a quiz in any group where the bot is present with:
 
 Separate the post URL, question, and answer with `|`. The answer is matched
 without case or extra-whitespace differences. Use `/stopraid` to end the active
-quiz. No X app credentials, account connection, or API verification is needed.
+quiz. Players connect from the bot's private chat by opening `/start connectx`;
+`/unlinkx` disconnects the linked account and deletes its stored tokens.
+
+### X OAuth setup
+
+X verification requires an X developer app configured for OAuth 2.0
+Authorization Code with PKCE, a public HTTPS callback URL ending in
+`/x/oauth/callback`, and permission to read users, posts, likes, follows, and
+offline access. Configure these Railway variables on the worker:
+
+- `X_API_CLIENT_ID`
+- `X_API_CLIENT_SECRET` (leave blank only for a public OAuth client)
+- `X_API_REDIRECT_URI` (must exactly match the X app callback URL)
+- `X_API_TOKEN_ENCRYPTION_KEY` (a Fernet key generated privately)
+
+Set the X app's callback URL to the Railway worker's public HTTPS domain plus
+`/x/oauth/callback`. Keep the encryption key and client secret in Railway
+variables; never commit or send them in chat. The X API plan must permit the
+likes, reposts, follows, post lookup, and recent-search endpoints the verifier
+uses; X may charge for API usage. If X is not configured or an action cannot be
+verified, quiz points are not awarded.
+
+Generate the encryption key locally with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 Configured bot admins and admins of any active registered group can manage
 quizzes in the group. Telegram must allow the bot to check its admin membership
 in a group; make the bot an administrator there if group-admin verification fails.
@@ -89,6 +122,10 @@ one. Give the bot permission to delete its own messages in each group.
 When no X quiz is active, the bot mentions that group's administrators in a
 raid-start reminder every 15 minutes. It also posts the detailed How to Play
 guide to every active group once per hour.
+
+Twenty-four hours before each Monday 00:00 UTC weekly point reset, the bot posts
+one Points Protection reminder in each active group. Its button opens the bot's
+private protection screen, where the existing purchase checkout can be started.
 
 ## Payment and reward safety
 

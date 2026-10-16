@@ -163,10 +163,9 @@ def test_weekly_snapshot_uses_receipt_time_not_verification_time():
 
             from unittest.mock import patch
 
-            # This test targets receipt-time accounting, not historical
-            # point-ledger reconstruction.
+            # This test targets receipt-time accounting, not weekly earnings.
             with patch(
-                "app.services.weekly_rewards.reconstruct_leaderboard_from_ledger",
+                "app.services.weekly_rewards.rank_weekly_earnings_from_ledger",
                 return_value=[],
             ):
                 snapshot = await create_weekly_reward_snapshot(week_key)
