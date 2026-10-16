@@ -63,6 +63,10 @@ An admin starts a quiz in the bot's private chat with:
 Separate the post URL, question, and answer with `|`. The answer is matched
 without case or extra-whitespace differences. Use `/stopraid` to end the active
 quiz. No X app credentials, account connection, or API verification is needed.
+Configured bot admins and admins of any active registered group can manage
+quizzes from the bot's private chat. Telegram must allow the bot to check its
+admin membership in a group; make the bot an administrator there if group-admin
+verification fails.
 
 ## Payment and reward safety
 

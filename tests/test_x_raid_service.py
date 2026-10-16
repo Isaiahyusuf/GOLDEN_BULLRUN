@@ -1,8 +1,11 @@
 import asyncio
+from types import SimpleNamespace
 
+from aiogram.enums import ChatMemberStatus
 from sqlalchemy import delete, select
 
 from app.database.connection import SessionLocal, engine, init_db
+from app.handlers import raids
 from app.models.transaction import PointTransaction
 from app.models.user import User
 from app.models.x_raid import XRaidCampaign, XRaidClaim
@@ -40,6 +43,51 @@ def test_group_play_button_opens_private_bot_missions():
     button = private_game_link("missions").inline_keyboard[0][0]
 
     assert button.url == "https://t.me/TrumptyDumptybot?start=missions"
+
+
+def test_raid_admin_can_be_a_group_admin_not_configured_bot_admin(monkeypatch):
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def scalars(self, query):
+            return SimpleNamespace(all=lambda: [-1001, -1002])
+
+    class FakeBot:
+        def __init__(self):
+            self.checked_groups = []
+
+        async def get_chat_member(self, chat_id, telegram_id):
+            self.checked_groups.append(chat_id)
+            status = (
+                ChatMemberStatus.ADMINISTRATOR
+                if chat_id == -1002
+                else ChatMemberStatus.MEMBER
+            )
+            return SimpleNamespace(status=status)
+
+    monkeypatch.setattr(raids, "SessionLocal", FakeSession)
+    monkeypatch.setattr(raids.settings, "admin_telegram_id", 111)
+    monkeypatch.setattr(raids.settings, "admin_telegram_ids", "")
+    bot = FakeBot()
+
+    assert asyncio.run(raids.is_raid_admin(bot, 222))
+    assert bot.checked_groups == [-1001, -1002]
+
+
+def test_configured_bot_admin_does_not_need_group_lookup(monkeypatch):
+    class FakeSession:
+        def __init__(self):
+            raise AssertionError("Configured bot admin should bypass group lookup.")
+
+    monkeypatch.setattr(raids, "SessionLocal", FakeSession)
+    monkeypatch.setattr(raids.settings, "admin_telegram_id", 111)
+    monkeypatch.setattr(raids.settings, "admin_telegram_ids", "")
+
+    assert asyncio.run(raids.is_raid_admin(None, 111))
 
 
 def test_quiz_claim_awards_once_and_locks_after_three_wrong_answers():

@@ -1,7 +1,9 @@
+import logging
 from html import escape
 
-from aiogram import F, Router
-from aiogram.enums import ChatType
+from aiogram import Bot, F, Router
+from aiogram.enums import ChatMemberStatus, ChatType
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -12,7 +14,11 @@ from aiogram.types import (
     Message,
 )
 
+from sqlalchemy import select
+
 from app.config import settings
+from app.database.connection import SessionLocal
+from app.models.group import TelegramGroup
 from app.services.x_raid_service import (
     MAX_QUIZ_ATTEMPTS,
     QUIZ_REWARD_POINTS,
@@ -26,6 +32,10 @@ from app.services.x_raid_service import (
 
 
 router = Router()
+
+
+class RaidAdminCheckError(Exception):
+    pass
 
 
 class QuizAnswer(StatesGroup):
@@ -56,6 +66,47 @@ def quiz_keyboard() -> InlineKeyboardMarkup:
             )]
         ]
     )
+
+
+async def is_raid_admin(bot: Bot, telegram_id: int) -> bool:
+    if telegram_id in settings.admin_ids:
+        return True
+
+    async with SessionLocal() as session:
+        group_ids = list(
+            (
+                await session.scalars(
+                    select(TelegramGroup.chat_id).where(
+                        TelegramGroup.active.is_(True)
+                    )
+                )
+            ).all()
+        )
+
+    check_failures = 0
+    for chat_id in group_ids:
+        try:
+            member = await bot.get_chat_member(chat_id, telegram_id)
+        except TelegramAPIError:
+            check_failures += 1
+            logging.exception(
+                "Could not check raid-admin status for user %s in group %s",
+                telegram_id,
+                chat_id,
+            )
+            continue
+        if member.status in {
+            ChatMemberStatus.CREATOR,
+            ChatMemberStatus.ADMINISTRATOR,
+        }:
+            return True
+
+    if check_failures:
+        raise RaidAdminCheckError(
+            "Could not verify your group-admin status. Make sure the bot is an "
+            "administrator in the group and try again."
+        )
+    return False
 
 
 async def send_raid_screen(
@@ -113,8 +164,19 @@ async def missions_command(message: Message):
 
 @router.message(Command("setraid"), F.chat.type == ChatType.PRIVATE)
 async def set_raid_command(message: Message):
-    if not message.from_user or message.from_user.id not in settings.admin_ids:
-        await message.answer("Only a bot administrator can start an X quiz.")
+    if not message.from_user:
+        await message.answer("Could not identify the command sender.")
+        return
+    try:
+        authorized = await is_raid_admin(message.bot, message.from_user.id)
+    except RaidAdminCheckError as exc:
+        await message.answer(str(exc))
+        return
+    if not authorized:
+        await message.answer(
+            "Only an administrator of a group where the bot is present can "
+            "start an X quiz."
+        )
         return
 
     content = (message.text or "").partition(" ")[2]
@@ -149,8 +211,19 @@ async def set_raid_command(message: Message):
 
 @router.message(Command("stopraid"), F.chat.type == ChatType.PRIVATE)
 async def stop_raid_command(message: Message):
-    if not message.from_user or message.from_user.id not in settings.admin_ids:
-        await message.answer("Only a bot administrator can stop an X quiz.")
+    if not message.from_user:
+        await message.answer("Could not identify the command sender.")
+        return
+    try:
+        authorized = await is_raid_admin(message.bot, message.from_user.id)
+    except RaidAdminCheckError as exc:
+        await message.answer(str(exc))
+        return
+    if not authorized:
+        await message.answer(
+            "Only an administrator of a group where the bot is present can "
+            "stop an X quiz."
+        )
         return
 
     if await stop_campaign():
