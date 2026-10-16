@@ -105,8 +105,12 @@ def test_defend_beats_attack_and_stale_moves_are_rejected(monkeypatch):
         async with SessionLocal() as session:
             a = await session.get(User, PLAYER_A)
             b = await session.get(User, PLAYER_B)
-            assert a.points == 11_000
-            assert b.points == 9_000
+            assert a.points == 11_075
+            assert b.points == 9_025
+            assert result["activity_points"] == {
+                PLAYER_A: 75,
+                PLAYER_B: 25,
+            }
 
     run_async(run())
 
@@ -144,8 +148,12 @@ def test_matching_moves_draw_and_refund_both_wagers(monkeypatch):
             a = await session.get(User, PLAYER_A)
             b = await session.get(User, PLAYER_B)
             duel = await session.get(Duel, duel_id)
-            assert a.points == 10_000
-            assert b.points == 10_000
+            assert a.points == 10_025
+            assert b.points == 10_025
+            assert result["activity_points"] == {
+                PLAYER_A: 25,
+                PLAYER_B: 25,
+            }
             assert duel.status == "draw"
             assert duel.settled_at is not None
 

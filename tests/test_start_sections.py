@@ -12,7 +12,9 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     assert "menu:about" in callbacks
     assert "menu:help" in callbacks
     assert "<code>/duel @username wager</code>" in start.SECTIONS["help"]
-    assert "Missions are not claimable yet." in start.SECTIONS["help"]
+    assert "Missions and weekly token reward payouts are not available yet." in (
+        start.SECTIONS["help"]
+    )
 
 
 def test_duel_section_explains_unconfigured_pvp(monkeypatch):

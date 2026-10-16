@@ -40,6 +40,7 @@ SECTIONS = {
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
         "🥊 Duels use points and are limited to the configured official group.\n\n"
+        "🎁 Daily activity rewards go to the top five active players at 00:00 UTC.\n\n"
         "Payments are verified on Solana. Never send a seed phrase or private key."
     ),
     "play": (
@@ -74,10 +75,19 @@ SECTIONS = {
         "Protection does not prevent duel losses."
     ),
     "rewards": (
-        "💎 <b>ROYAL REWARDS</b>\n\n"
-        "Weekly leaderboard snapshots and reward calculations are recorded by "
-        "the game. Winner wallet collection and manual payout tools are not "
-        "available yet, so rewards are not currently claimable."
+        "🎁 <b>DAILY ACTIVITY REWARDS</b>\n\n"
+        "The five highest activity scores earn competitive points at 00:00 UTC:\n"
+        "🥇 1st: <b>500</b> · 🥈 2nd: <b>350</b> · 🥉 3rd: <b>250</b>\n"
+        "4th: <b>150</b> · 5th: <b>100</b>\n\n"
+        "Eligible official-group messages count once every 30 seconds, up to "
+        "20 per player each UTC day. A completed duel adds 10 activity score "
+        "for each player and a win adds 5 more, for up to 5 duels per player "
+        "each day. Duelists also earn +25 points for participation; the winner "
+        "earns +50 extra. Those duel bonuses are capped at 5 completed duels "
+        "per player each UTC day.\n\n"
+        "Only message counts and timestamps are stored, not message text. "
+        "Purchased credits do not count as competitive points.\n\n"
+        "Weekly token reward payouts are not available yet."
     ),
     "help": (
         "📜 <b>HOW TO PLAY</b>\n\n"
@@ -92,17 +102,19 @@ SECTIONS = {
         "expiry, and weekly-reset protection. It never protects PvP losses.\n"
         "5. <b>Shop privately:</b> open the shop only in the bot's private chat. "
         "Payments are checked on Solana before credits or protection are granted.\n\n"
-        "Missions are not claimable yet. Weekly reward payouts are not yet "
-        "available. Check the PvP Arena for current group availability."
+        "Daily activity rewards go to the top five at 00:00 UTC. Qualifying "
+        "group messages are capped, and completed duels award both players "
+        "participation points with an extra winner bonus. Missions and weekly "
+        "token reward payouts are not available yet."
     ),
 }
 
 
 def get_section_text(section: str) -> str:
-    if section == "duel" and settings.pvp_group_id is None:
+    if section in {"duel", "rewards"} and settings.pvp_group_id is None:
         return (
-            SECTIONS["duel"]
-            + "\n\n🔴 <b>PvP is currently unavailable.</b>\n"
+            SECTIONS[section]
+            + "\n\n🔴 <b>PvP and daily group activity rewards are currently unavailable.</b>\n"
             "The official group has not been configured for the bot yet."
         )
     return SECTIONS[section]

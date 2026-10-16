@@ -57,6 +57,7 @@ async def _initialize_schema():
     from app.models.payment import Payment
     from app.models.group import TelegramGroup
     from app.models.reward import WeeklyRewardPool, WeeklyRewardPayout
+    from app.models.daily_reward import DailyActivity, DailyRewardSettlement
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

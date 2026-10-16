@@ -35,6 +35,26 @@ async def save_group(chat):
             await session.execute(statement)
 
 
+@router.message(
+    F.chat.type.in_(GROUP_TYPES),
+    F.text,
+    ~F.text.startswith("/"),
+)
+async def record_daily_activity(message: Message):
+    if (
+        settings.pvp_group_id is None
+        or message.chat.id != settings.pvp_group_id
+        or message.from_user is None
+        or message.from_user.is_bot
+        or not message.text
+    ):
+        return
+
+    from app.services.daily_rewards import record_group_message
+
+    await record_group_message(message.from_user.id)
+
+
 async def group_is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     try:
         member = await bot.get_chat_member(chat_id, user_id)

@@ -7,6 +7,7 @@ from app.database.connection import SessionLocal
 from app.models.duel import Duel
 from app.models.transaction import PointTransaction
 from app.models.user import User
+from app.services.daily_rewards import record_completed_duel
 
 
 MAX_WAGER = 1_000_000
@@ -213,12 +214,20 @@ async def submit_choice(duel_id: int, player_id: int, choice: str, chat_id: int,
                                 reason=f"duel_refund:{duel.id}",
                             )
                         )
+                    activity_points = await record_completed_duel(
+                        session,
+                        duel.id,
+                        duel.challenger_id,
+                        duel.opponent_id,
+                        winner_id=None,
+                    )
                     duel.status = "draw"
                     duel.settled_at = _now()
                     return {
                         "status": "draw",
                         "round": completed_round,
                         "score": score,
+                        "activity_points": activity_points,
                         "message": "The duel is a draw. Both wagers have been refunded.",
                     }
 
@@ -247,12 +256,20 @@ async def submit_choice(duel_id: int, player_id: int, choice: str, chat_id: int,
                         reason=f"duel_prize:{duel.id}",
                     )
                 )
+                activity_points = await record_completed_duel(
+                    session,
+                    duel.id,
+                    duel.challenger_id,
+                    duel.opponent_id,
+                    winner_id=winner_id,
+                )
                 return {
                     "status": "settled",
                     "round": completed_round,
                     "score": score,
                     "winner_id": winner_id,
                     "prize": prize,
+                    "activity_points": activity_points,
                     "message": "The duel is over.",
                 }
 

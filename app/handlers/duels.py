@@ -119,6 +119,9 @@ async def start_duel(message: Message):
         f"Wager: {wager:,} points each\n"
         "First to 2 round wins takes the pot.\n"
         "If the score is tied after 3 rounds, both wagers are refunded.\n\n"
+        "Each completed duel can earn +25 participation points; the winner "
+        "earns +50 extra. Bonuses are limited to 5 completed duels per player "
+        "each UTC day.\n\n"
         "Only the challenged player can accept.",
         reply_markup=accept_keyboard(duel_id),
     )
@@ -204,7 +207,8 @@ async def duel_move_button(callback: CallbackQuery):
         await callback.message.edit_text(
             f"🤝 DUEL #{duel_id} — DRAW\n\n"
             f"{score_text}\n"
-            "Both wagers have been refunded."
+            "Both wagers have been refunded.\n"
+            "Eligible players also receive +25 daily activity points."
         )
         await callback.answer("Draw — wagers refunded.")
         return
@@ -213,6 +217,7 @@ async def duel_move_button(callback: CallbackQuery):
     await callback.message.edit_text(
         f"🏆 DUEL #{duel_id} — {winner} WINS!\n\n"
         f"{score_text}\n"
-        f"Prize: {result['prize']:,} points."
+        f"Prize: {result['prize']:,} points.\n"
+        "Eligible players receive +25 activity points; the winner gets +50 extra."
     )
     await callback.answer("Duel complete!")

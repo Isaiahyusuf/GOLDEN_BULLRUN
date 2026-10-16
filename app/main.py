@@ -11,6 +11,7 @@ from app.handlers.start import router
 from app.handlers.duels import router as duels_router
 from app.handlers.groups import router as groups_router
 from app.services.duel_service import expire_stale_duels
+from app.services.daily_rewards import settle_completed_daily_rewards
 from app.services.protection_service import recover_weekly_resets
 from app.services.weekly_rewards import get_completed_week_key
 
@@ -91,6 +92,45 @@ async def weekly_reset_loop():
         await asyncio.sleep(60)
 
 
+async def daily_rewards_loop(bot):
+    while True:
+        try:
+            settled = await settle_completed_daily_rewards()
+            if settings.pvp_group_id is not None:
+                for result in settled:
+                    if not result["winners"]:
+                        continue
+
+                    lines = [
+                        f"👑 DAILY ACTIVITY REWARDS — {result['day_key'].isoformat()}",
+                        "",
+                    ]
+                    for winner in result["winners"]:
+                        display_name = winner["name"] or "Player"
+                        if winner["username"]:
+                            display_name += f" (@{winner['username']})"
+                        lines.append(
+                            f"{winner['rank']}. {display_name} — "
+                            f"{winner['points']:,} points"
+                        )
+                    try:
+                        await bot.send_message(
+                            settings.pvp_group_id,
+                            "\n".join(lines),
+                        )
+                    except Exception:
+                        logging.exception(
+                            "Could not announce daily rewards for %s",
+                            result["day_key"],
+                        )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.exception("Daily rewards settlement failed")
+
+        await asyncio.sleep(60)
+
+
 async def main():
     logging.basicConfig(level=logging.INFO)
 
@@ -109,6 +149,7 @@ async def main():
 
         background_tasks = [
             asyncio.create_task(expire_duels_loop(bot)),
+            asyncio.create_task(daily_rewards_loop(bot)),
             asyncio.create_task(weekly_reset_loop()),
         ]
 
