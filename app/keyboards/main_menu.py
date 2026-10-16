@@ -80,12 +80,12 @@ def private_protection_link():
     )
 
 
-def private_game_link(start_arg: str = "play"):
+def private_missions_link():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="⚔️ PLAY IN PRIVATE CHAT",
-                url=f"https://t.me/TrumptyDumptybot?start={start_arg}",
+                text="🎯 OPEN MISSIONS IN BOT",
+                url="https://t.me/TrumptyDumptybot?start=missions",
             )]
         ]
     )

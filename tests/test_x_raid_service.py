@@ -38,11 +38,12 @@ def test_campaign_rewards_are_not_x_engagement_rewards():
 
 
 def test_group_play_button_opens_private_bot_missions():
-    from app.keyboards.main_menu import private_game_link
+    from app.keyboards.main_menu import private_missions_link
 
-    button = private_game_link("missions").inline_keyboard[0][0]
+    button = private_missions_link().inline_keyboard[0][0]
 
     assert button.url == "https://t.me/TrumptyDumptybot?start=missions"
+    assert button.text == "🎯 OPEN MISSIONS IN BOT"
 
 
 def test_raid_admin_can_be_a_group_admin_not_configured_bot_admin(monkeypatch):

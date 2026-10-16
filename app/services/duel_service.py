@@ -52,9 +52,13 @@ async def create_duel(
             by_id = {player.telegram_id: player for player in players}
 
             if challenger_id not in by_id:
-                raise DuelError("The challenger must register with /start first.")
+                raise DuelError(
+                    "The challenger must send /start in a group or the bot first."
+                )
             if opponent_id not in by_id:
-                raise DuelError("The opponent must register with /start first.")
+                raise DuelError(
+                    "The opponent must send /start in a group or the bot first."
+                )
             if by_id[challenger_id].points < wager:
                 raise DuelError("You do not have enough points for that wager.")
 

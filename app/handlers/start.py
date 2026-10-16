@@ -1,4 +1,5 @@
 from datetime import timezone
+from html import escape
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
@@ -11,7 +12,7 @@ from app.keyboards.main_menu import (
     shop_menu,
     private_shop_link,
     private_protection_link,
-    private_game_link,
+    private_missions_link,
     protection_menu,
 )
 from app.services.points_service import register_player, get_player
@@ -40,7 +41,7 @@ SECTIONS = {
         "tracked separately and do not increase your leaderboard rank.\n"
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
-        "🥊 Duels use points and are limited to the configured official group.\n"
+        "🥊 Duels are played in the configured official Telegram group.\n"
         "𝕏 X post quizzes award competitive points for correct answers in the "
         "bot. No X engagement is required.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
@@ -49,9 +50,12 @@ SECTIONS = {
     ),
     "play": (
         "⚔️ <b>ROYALE ARENA</b>\n\n"
-        "Build your competitive points balance and prepare to challenge rivals.\n\n"
-        "🥊 PvP is available only in the configured official Telegram group.\n"
-        "𝕏 Open Missions to read an active X post and answer its quiz for points."
+        "PvP is played in the configured official Telegram group.\n\n"
+        "Challenge a player in that group with:\n"
+        "<code>/duel @username 1000</code>\n\n"
+        "Only the mentioned player can accept. Both wagers are reserved after "
+        "they accept. Use /start in a group or in the bot to register.\n\n"
+        "𝕏 X post quizzes are available from Missions."
     ),
     "missions": (
         "🎯 <b>X RAID MISSIONS</b>\n\n"
@@ -68,10 +72,11 @@ SECTIONS = {
         "🥊 <b>PVP ARENA</b>\n\n"
         "Duels are played in the official Telegram group, not in private chat.\n\n"
         "Challenge a registered player with:\n"
-        "<code>/duel @username wager</code>\n\n"
-        "Both players must have opened the bot and sent /start. Wagers must be "
+        "<code>/duel @username 1000</code>\n\n"
+        "Both players must have sent /start in a group or in the bot. Wagers must be "
         "between 1 and 1,000,000 points. The challenged player accepts the "
-        "posted duel; both wagers are then reserved.\n\n"
+        "group challenge; only that mentioned player can accept, and both "
+        "wagers are then reserved.\n\n"
         "Each round, both players secretly choose ATTACK or DEFEND. DEFEND "
         "beats ATTACK; matching choices draw the round. First to 2 round wins "
         "takes both wagers. A tied score after 3 rounds refunds both wagers. "
@@ -99,8 +104,8 @@ SECTIONS = {
     ),
     "help": (
         "📜 <b>HOW TO PLAY</b>\n\n"
-        "1. <b>Register:</b> send /start in the bot. New profiles begin with "
-        "10,000 competitive points.\n"
+        "1. <b>Register:</b> send /start in a group or in the bot. New profiles "
+        "begin with 10,000 competitive points.\n"
         "2. <b>Check your account:</b> use /profile or /balance. Competitive "
         "points and purchased credits are separate; credits do not raise rank.\n"
         "3. <b>Earn daily activity rewards:</b> be active in any group where "
@@ -113,7 +118,8 @@ SECTIONS = {
         "the quiz in the bot. A correct answer earns 200 points once per "
         "campaign; you have up to 3 attempts. No X engagement is required.\n"
         "5. <b>Play PvP:</b> in the configured official group, challenge with "
-        "<code>/duel @username wager</code>. Both players must be registered. "
+        "<code>/duel @username 1000</code>, replacing the username and wager. "
+        "Both players must register with /start in a group or the bot. "
         "Use the duel buttons to choose ATTACK or DEFEND each round. PvP needs "
         "an official group configured by the bot.\n"
         "6. <b>Protect points:</b> view Points Protection for your rank, price, "
@@ -141,6 +147,30 @@ def get_section_text(section: str) -> str:
             "is configured."
         )
     return SECTIONS[section]
+
+
+def group_play_text(chat_id: int) -> str:
+    if settings.pvp_group_id is None:
+        return (
+            "⚔️ <b>GROUP PvP</b>\n\n"
+            "PvP is not available yet because the official group has not been "
+            "configured."
+        )
+    if chat_id != settings.pvp_group_id:
+        return (
+            "⚔️ <b>GROUP PvP</b>\n\n"
+            "PvP challenges are played in the configured official Telegram group. "
+            "You can register here with /start."
+        )
+    return (
+        "⚔️ <b>GROUP PvP</b>\n\n"
+        "Challenge a player here with:\n"
+        "<code>/duel @username 1000</code>\n\n"
+        "Replace @username with their Telegram username and 1000 with the "
+        "points you want to stake. Only that player can accept the challenge. "
+        "Both players must register with /start in a group or the bot.\n\n"
+        "Purchases are handled privately."
+    )
 
 
 def get_payment_status_text() -> str:
@@ -237,13 +267,22 @@ async def start_command(message: Message):
     start_arg = args[1].strip().lower() if len(args) > 1 else ""
 
     if message.chat.type != "private":
+        if message.from_user is None:
+            await message.answer("Use /start in a group chat to register.")
+            return
+        player = await register_player(message.from_user)
+        if message.chat.id != settings.pvp_group_id:
+            text = group_play_text(message.chat.id)
+        else:
+            text = (
+                f"👑 <b>Welcome, {escape(player['name'])}</b>\n"
+                f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
+                f"{group_play_text(message.chat.id)}"
+            )
         await message.answer(
-            "👑 Ready to play TRUMPTY ROYALE?\n\n"
-            "Open the bot privately to register, view your balance, join X raids, "
-            "and use your game controls.",
-            reply_markup=private_game_link(
-                "missions" if start_arg == "missions" else "play"
-            ),
+            text,
+            reply_markup=private_shop_link(),
+            parse_mode="HTML",
         )
         return
 
@@ -279,10 +318,12 @@ async def start_command(message: Message):
 @router.message(Command("menu"))
 async def menu_command(message: Message):
     if message.chat.type != "private":
+        if message.from_user:
+            await register_player(message.from_user)
         await message.answer(
-            "👑 Ready to play TRUMPTY ROYALE? Open the bot privately to "
-            "register and access your game controls.",
-            reply_markup=private_game_link(),
+            group_play_text(message.chat.id),
+            reply_markup=private_shop_link(),
+            parse_mode="HTML",
         )
         return
     await show_home(message)
@@ -357,23 +398,32 @@ async def menu_callback(callback: CallbackQuery):
         await callback.answer()
         return
 
-    if section in {"play", "missions"} and chat_type != "private":
+    if section == "play" and chat_type != "private":
+        if callback.from_user:
+            await register_player(callback.from_user)
         await callback.message.answer(
-            "👑 Ready to play? Open TRUMPTY ROYALE privately to register, "
-            "check your balance, and join the active raids.",
-            reply_markup=private_game_link(
-                "missions" if section == "missions" else "play"
-            ),
+            group_play_text(callback.message.chat.id),
+            reply_markup=private_shop_link(),
+            parse_mode="HTML",
+        )
+        await callback.answer()
+        return
+    if section == "missions" and chat_type != "private":
+        await callback.message.answer(
+            "𝕏 X post quizzes are handled in the bot's private chat.",
+            reply_markup=private_missions_link(),
         )
         await callback.answer()
         return
 
     if section == "home":
         if chat_type != "private":
+            if callback.from_user:
+                await register_player(callback.from_user)
             await callback.message.edit_text(
-                "👑 Ready to play TRUMPTY ROYALE? Open the bot privately to "
-                "register and access your game controls.",
-                reply_markup=private_game_link(),
+                group_play_text(callback.message.chat.id),
+                reply_markup=private_shop_link(),
+                parse_mode="HTML",
             )
         else:
             await callback.message.edit_text(
@@ -382,7 +432,10 @@ async def menu_callback(callback: CallbackQuery):
     elif section == "profile":
         player = await get_player(callback.from_user.id)
         if player is None:
-            await callback.answer("Send /start in the bot's private chat first.", show_alert=True)
+            await callback.answer(
+                "Send /start in this group or the bot first.",
+                show_alert=True,
+            )
             return
 
         username = f"@{player['username']}" if player["username"] else "Not set"

@@ -11,7 +11,7 @@ def test_about_and_how_to_play_are_available_from_main_menu():
 
     assert "menu:about" in callbacks
     assert "menu:help" in callbacks
-    assert "<code>/duel @username wager</code>" in start.SECTIONS["help"]
+    assert "<code>/duel @username 1000</code>" in start.SECTIONS["help"]
     assert "any group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
     assert "X post quiz" in start.SECTIONS["help"]
@@ -61,6 +61,29 @@ def test_duel_section_does_not_claim_pvp_is_disabled_when_configured(monkeypatch
     monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
 
     assert "currently unavailable" not in start.get_section_text("duel")
+
+
+def test_group_play_uses_group_pvp_and_keeps_shop_private(monkeypatch):
+    monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
+
+    text = start.group_play_text(-100123)
+
+    assert "/duel @username 1000" in text
+    assert "Only that player can accept" in text
+    assert "Purchases are handled privately" in text
+    assert "PLAY IN PRIVATE CHAT" not in text
+
+
+def test_group_play_on_non_pvp_group_does_not_redirect_gameplay_to_private(
+    monkeypatch,
+):
+    monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
+
+    text = start.group_play_text(-100456)
+
+    assert "configured official Telegram group" in text
+    assert "register here with /start" in text
+    assert "privately" not in text.lower()
 
 
 def test_checkout_message_tracks_payment_configuration(monkeypatch):

@@ -73,7 +73,7 @@ async def start_duel(message: Message):
     parts = (message.text or "").split()
     if len(parts) != 3 or not parts[1].startswith("@"):
         await message.answer(
-            "Use: /duel @username wager\n"
+            "Use: /duel @username points\n"
             "Example: /duel @player 1000"
         )
         return
@@ -92,8 +92,8 @@ async def start_duel(message: Message):
 
     if opponent is None:
         await message.answer(
-            "That player isn't registered yet. Both players must open the bot "
-            "privately and press /start before duelling."
+            "That player isn't registered yet. They must send /start in a group "
+            "or in the bot before you can challenge them."
         )
         return
 
@@ -122,7 +122,7 @@ async def start_duel(message: Message):
         "Each completed duel can earn +25 participation points; the winner "
         "earns +50 extra. Bonuses are limited to 5 completed duels per player "
         "each UTC day.\n\n"
-        "Only the challenged player can accept.",
+        f"Only @{username} can accept this challenge.",
         reply_markup=accept_keyboard(duel_id),
     )
 
