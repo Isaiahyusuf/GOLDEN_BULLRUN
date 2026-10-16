@@ -5,14 +5,12 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
-from app.config import settings
 from app.keyboards.main_menu import (
     main_menu,
     back_menu,
     shop_menu,
     private_shop_link,
     private_protection_link,
-    private_missions_link,
     protection_menu,
 )
 from app.services.points_service import register_player, get_player
@@ -41,27 +39,27 @@ SECTIONS = {
         "tracked separately and do not increase your leaderboard rank.\n"
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
-        "🥊 Duels are played in the configured official Telegram group.\n"
+        "🥊 Duels are played in any group where the bot is present.\n"
         "𝕏 X post quizzes award competitive points for correct answers in the "
-        "bot. No X engagement is required.\n\n"
+        "group or bot. No X engagement is required.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
         "UTC day, the top five earn 500, 350, 250, 150, or 100 points.\n\n"
         "Payments are verified on Solana. Never send a seed phrase or private key."
     ),
     "play": (
         "⚔️ <b>ROYALE ARENA</b>\n\n"
-        "PvP is played in the configured official Telegram group.\n\n"
-        "Challenge a player in that group with:\n"
+        "PvP is played right here in any group where the bot is present.\n\n"
+        "Challenge a player with:\n"
         "<code>/duel @username 1000</code>\n\n"
         "Only the mentioned player can accept. Both wagers are reserved after "
         "they accept. Use /start in a group or in the bot to register.\n\n"
-        "𝕏 X post quizzes are available from Missions."
+        "𝕏 X post quizzes are available with /missions in this group."
     ),
     "missions": (
         "🎯 <b>X RAID MISSIONS</b>\n\n"
-        "Open this section in the bot's private chat to view an X post quiz. "
-        "Answer correctly in the bot to earn 200 competitive points; no X "
-        "engagement is required."
+        "View the active X post quiz and submit your answer here in the group. "
+        "A correct answer earns 200 competitive points; no X engagement is "
+        "required."
     ),
     "leaderboard": (
         "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
@@ -70,7 +68,7 @@ SECTIONS = {
     ),
     "duel": (
         "🥊 <b>PVP ARENA</b>\n\n"
-        "Duels are played in the official Telegram group, not in private chat.\n\n"
+        "Duels are played in any group where the bot is present, not in private chat.\n\n"
         "Challenge a registered player with:\n"
         "<code>/duel @username 1000</code>\n\n"
         "Both players must have sent /start in a group or in the bot. Wagers must be "
@@ -94,8 +92,8 @@ SECTIONS = {
         "The score is global across groups. A completed duel adds 10 activity "
         "score per player and a win adds 5 more, up to 5 scored duels daily. "
         "Duels also give each player +25 points; the winner gets +50 extra, "
-        "up to 5 completed duels daily. PvP bonuses require PvP to be enabled "
-        "in its official group.\n\n"
+        "up to 5 completed duels daily. PvP works in any group where the bot "
+        "is present.\n\n"
         "Only message counts and timestamps are stored, not message text. "
         "Purchased credits do not count as competitive points.\n\n"
         "X post quizzes award 200 points for one correct answer per campaign. "
@@ -114,14 +112,13 @@ SECTIONS = {
         "Messages count once every 30 seconds, up to 20 per day. Completed "
         "duels also add activity score; both players earn +25 points and the "
         "winner gets +50 extra, for up to 5 duels per day.\n"
-        "4. <b>X post quiz:</b> open Missions, read the linked post, then answer "
-        "the quiz in the bot. A correct answer earns 200 points once per "
+        "4. <b>X post quiz:</b> use /missions, read the linked post, then answer "
+        "the quiz in the group. A correct answer earns 200 points once per "
         "campaign; you have up to 3 attempts. No X engagement is required.\n"
-        "5. <b>Play PvP:</b> in the configured official group, challenge with "
+        "5. <b>Play PvP:</b> in a group where the bot is present, challenge with "
         "<code>/duel @username 1000</code>, replacing the username and wager. "
         "Both players must register with /start in a group or the bot. "
-        "Use the duel buttons to choose ATTACK or DEFEND each round. PvP needs "
-        "an official group configured by the bot.\n"
+        "Use the duel buttons to choose ATTACK or DEFEND each round.\n"
         "6. <b>Protect points:</b> view Points Protection for your rank, price, "
         "expiry, and weekly-reset protection. It never protects PvP losses.\n"
         "7. <b>Shop privately:</b> open the shop only in the bot's private chat. "
@@ -133,38 +130,13 @@ SECTIONS = {
 
 
 def get_section_text(section: str) -> str:
-    if section == "duel" and settings.pvp_group_id is None:
-        return (
-            SECTIONS[section]
-            + "\n\n🔴 <b>PvP is currently unavailable.</b>\n"
-            "The official group has not been configured for the bot yet."
-        )
-    if section == "rewards" and settings.pvp_group_id is None:
-        return (
-            SECTIONS[section]
-            + "\n\nGroup messages count in any group where the bot is present. "
-            "PvP activity bonuses are unavailable until the official PvP group "
-            "is configured."
-        )
     return SECTIONS[section]
 
 
-def group_play_text(chat_id: int) -> str:
-    if settings.pvp_group_id is None:
-        return (
-            "⚔️ <b>GROUP PvP</b>\n\n"
-            "PvP is not available yet because the official group has not been "
-            "configured."
-        )
-    if chat_id != settings.pvp_group_id:
-        return (
-            "⚔️ <b>GROUP PvP</b>\n\n"
-            "PvP challenges are played in the configured official Telegram group. "
-            "You can register here with /start."
-        )
+def group_play_text() -> str:
     return (
         "⚔️ <b>GROUP PvP</b>\n\n"
-        "Challenge a player here with:\n"
+        "Challenge a player in this group with:\n"
         "<code>/duel @username 1000</code>\n\n"
         "Replace @username with their Telegram username and 1000 with the "
         "points you want to stake. Only that player can accept the challenge. "
@@ -271,14 +243,11 @@ async def start_command(message: Message):
             await message.answer("Use /start in a group chat to register.")
             return
         player = await register_player(message.from_user)
-        if message.chat.id != settings.pvp_group_id:
-            text = group_play_text(message.chat.id)
-        else:
-            text = (
-                f"👑 <b>Welcome, {escape(player['name'])}</b>\n"
-                f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
-                f"{group_play_text(message.chat.id)}"
-            )
+        text = (
+            f"👑 <b>Welcome, {escape(player['name'])}</b>\n"
+            f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
+            f"{group_play_text()}"
+        )
         await message.answer(
             text,
             reply_markup=private_shop_link(),
@@ -321,7 +290,7 @@ async def menu_command(message: Message):
         if message.from_user:
             await register_player(message.from_user)
         await message.answer(
-            group_play_text(message.chat.id),
+            group_play_text(),
             reply_markup=private_shop_link(),
             parse_mode="HTML",
         )
@@ -402,26 +371,18 @@ async def menu_callback(callback: CallbackQuery):
         if callback.from_user:
             await register_player(callback.from_user)
         await callback.message.answer(
-            group_play_text(callback.message.chat.id),
+            group_play_text(),
             reply_markup=private_shop_link(),
             parse_mode="HTML",
         )
         await callback.answer()
         return
-    if section == "missions" and chat_type != "private":
-        await callback.message.answer(
-            "𝕏 X post quizzes are handled in the bot's private chat.",
-            reply_markup=private_missions_link(),
-        )
-        await callback.answer()
-        return
-
     if section == "home":
         if chat_type != "private":
             if callback.from_user:
                 await register_player(callback.from_user)
             await callback.message.edit_text(
-                group_play_text(callback.message.chat.id),
+                group_play_text(),
                 reply_markup=private_shop_link(),
                 parse_mode="HTML",
             )
@@ -529,4 +490,27 @@ async def menu_callback(callback: CallbackQuery):
         await callback.answer("That section isn't available yet.")
         return
 
+    await callback.answer()
+
+
+@router.callback_query(F.data == "group:play")
+async def group_play_callback(callback: CallbackQuery):
+    if callback.message is None:
+        await callback.answer("This game post is unavailable.", show_alert=True)
+        return
+    if callback.message.chat.type == "private":
+        await callback.answer("Use /duel in the game group to challenge a player.")
+        return
+
+    player = await register_player(callback.from_user)
+    await callback.message.answer(
+        f"⚔️ <b>THE ARENA IS OPEN, {escape(player['name'])}</b>\n\n"
+        "Challenge your rival here:\n"
+        "<code>/duel @username 1000</code>\n\n"
+        "Replace the username and stake with your opponent and wager. "
+        "Only the mentioned player can accept. Both players need to register "
+        "with /start in a group or in the bot.",
+        reply_markup=private_shop_link(),
+        parse_mode="HTML",
+    )
     await callback.answer()

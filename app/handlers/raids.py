@@ -2,13 +2,14 @@ import logging
 from html import escape
 
 from aiogram import Bot, F, Router
-from aiogram.enums import ChatMemberStatus, ChatType
+from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
     CallbackQuery,
+    ForceReply,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -53,17 +54,6 @@ def raid_keyboard() -> InlineKeyboardMarkup:
                 text="🏠 MAIN MENU",
                 callback_data="menu:home",
             )],
-        ]
-    )
-
-
-def quiz_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text="CANCEL",
-                callback_data="raid:cancel",
-            )]
         ]
     )
 
@@ -120,7 +110,7 @@ async def send_raid_screen(
         text = (
             "🎯 <b>X RAID MISSIONS</b>\n\n"
             "No X quiz is active right now.\n\n"
-            "Admins can start one with:\n"
+            "A group admin can start one here with:\n"
             "<code>/setraid https://x.com/name/status/POST_ID | "
             "Question about the post? | correct answer</code>\n"
             "Stop it with <code>/stopraid</code>."
@@ -130,7 +120,7 @@ async def send_raid_screen(
         text = (
             "🎯 <b>ACTIVE X POST QUIZ</b>\n\n"
             f"Read the <a href=\"{escape(campaign.post_url, quote=True)}\">X post</a>, "
-            "then answer the question here in the bot.\n\n"
+            "then answer the question here in the group or bot.\n\n"
             f"<b>Question:</b> {escape(campaign.quiz_question)}\n\n"
             f"Correct answer reward: <b>{QUIZ_REWARD_POINTS} points</b> "
             f"(one claim per campaign; {MAX_QUIZ_ATTEMPTS} attempts).\n"
@@ -157,12 +147,12 @@ async def send_raid_screen(
         )
 
 
-@router.message(Command("missions"), F.chat.type == ChatType.PRIVATE)
+@router.message(Command("missions"))
 async def missions_command(message: Message):
     await send_raid_screen(message, message.from_user.id)
 
 
-@router.message(Command("setraid"), F.chat.type == ChatType.PRIVATE)
+@router.message(Command("setraid"))
 async def set_raid_command(message: Message):
     if not message.from_user:
         await message.answer("Could not identify the command sender.")
@@ -209,7 +199,7 @@ async def set_raid_command(message: Message):
     )
 
 
-@router.message(Command("stopraid"), F.chat.type == ChatType.PRIVATE)
+@router.message(Command("stopraid"))
 async def stop_raid_command(message: Message):
     if not message.from_user:
         await message.answer("Could not identify the command sender.")
@@ -234,11 +224,8 @@ async def stop_raid_command(message: Message):
 
 @router.callback_query(F.data == "raid:screen")
 async def show_raid_screen_callback(callback: CallbackQuery):
-    if callback.message is None or callback.message.chat.type != ChatType.PRIVATE:
-        await callback.answer(
-            "Open Missions in the bot's private chat.",
-            show_alert=True,
-        )
+    if callback.message is None:
+        await callback.answer("This message is unavailable.", show_alert=True)
         return
     await send_raid_screen(callback.message, callback.from_user.id, edit=True)
     await callback.answer()
@@ -246,11 +233,8 @@ async def show_raid_screen_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data == "raid:answer")
 async def begin_quiz_answer(callback: CallbackQuery, state: FSMContext):
-    if callback.message is None or callback.message.chat.type != ChatType.PRIVATE:
-        await callback.answer(
-            "Answer the raid quiz in the bot's private chat.",
-            show_alert=True,
-        )
+    if callback.message is None:
+        await callback.answer("This message is unavailable.", show_alert=True)
         return
 
     campaign = await get_active_campaign()
@@ -268,23 +252,18 @@ async def begin_quiz_answer(callback: CallbackQuery, state: FSMContext):
 
     await state.set_state(QuizAnswer.waiting)
     await state.update_data(campaign_id=campaign.id)
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"<b>Raid quiz</b>\n\n{escape(campaign.quiz_question)}\n\n"
-        f"Send your answer as a message. You have "
+        f"Reply to this message with your answer. You have "
         f"{MAX_QUIZ_ATTEMPTS - status['attempts']} attempt(s) left. "
         "Use /cancel to leave.",
-        reply_markup=quiz_keyboard(),
+        reply_markup=ForceReply(
+            selective=True,
+            input_field_placeholder="Your answer",
+        ),
         parse_mode="HTML",
     )
     await callback.answer()
-
-
-@router.callback_query(F.data == "raid:cancel", QuizAnswer.waiting)
-async def cancel_quiz_answer(callback: CallbackQuery, state: FSMContext):
-    await state.clear()
-    if callback.message is not None and callback.message.chat.type == ChatType.PRIVATE:
-        await send_raid_screen(callback.message, callback.from_user.id, edit=True)
-    await callback.answer("Quiz cancelled.")
 
 
 @router.message(Command("cancel"), QuizAnswer.waiting)
@@ -293,7 +272,7 @@ async def cancel_quiz_command(message: Message, state: FSMContext):
     await message.answer("Quiz cancelled. Open Missions whenever you are ready.")
 
 
-@router.message(QuizAnswer.waiting, F.chat.type == ChatType.PRIVATE, F.text)
+@router.message(QuizAnswer.waiting, F.text)
 async def receive_quiz_answer(message: Message, state: FSMContext):
     data = await state.get_data()
     campaign_id = data.get("campaign_id")

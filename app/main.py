@@ -12,11 +12,53 @@ from app.handlers.start import router
 from app.handlers.duels import router as duels_router
 from app.handlers.groups import router as groups_router
 from app.handlers.raids import router as raids_router
+from app.keyboards.main_menu import group_play_post
 from app.models.group import TelegramGroup
 from app.services.duel_service import expire_stale_duels
 from app.services.daily_rewards import settle_completed_daily_rewards
 from app.services.protection_service import recover_weekly_resets
 from app.services.weekly_rewards import get_completed_week_key
+
+
+GROUP_PLAY_POST_INTERVAL_SECONDS = 600
+
+
+async def group_play_posts_loop(bot):
+    cycle = 0
+    while True:
+        try:
+            async with SessionLocal() as session:
+                group_ids = list(
+                    (
+                        await session.scalars(
+                            select(TelegramGroup.chat_id).where(
+                                TelegramGroup.active.is_(True)
+                            )
+                        )
+                    ).all()
+                )
+
+            text, reply_markup = group_play_post(cycle)
+            for group_id in group_ids:
+                try:
+                    await bot.send_message(
+                        group_id,
+                        text,
+                        reply_markup=reply_markup,
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    logging.exception(
+                        "Could not post the group play prompt in group %s",
+                        group_id,
+                    )
+            cycle += 1
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.exception("Group play prompt cycle failed")
+
+        await asyncio.sleep(GROUP_PLAY_POST_INTERVAL_SECONDS)
 
 
 async def expire_duels_loop(bot):
@@ -162,6 +204,7 @@ async def main():
         dp.include_router(duels_router)
 
         background_tasks = [
+            asyncio.create_task(group_play_posts_loop(bot)),
             asyncio.create_task(expire_duels_loop(bot)),
             asyncio.create_task(daily_rewards_loop(bot)),
             asyncio.create_task(weekly_reset_loop()),

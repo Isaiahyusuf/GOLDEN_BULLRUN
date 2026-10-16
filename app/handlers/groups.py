@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.config import settings
 from app.database.connection import SessionLocal
+from app.keyboards.main_menu import group_play_post
 from app.models.group import TelegramGroup
 
 router = Router()
@@ -84,12 +85,17 @@ async def bot_group_membership(event: ChatMemberUpdated, bot: Bot):
             ChatMemberStatus.ADMINISTRATOR,
         }:
             try:
+                post_text, keyboard = group_play_post()
                 await bot.send_message(
                     event.chat.id,
-                    "👑 <b>TRUMPTY ROYALE connected</b>\n\n"
-                    "This group has been registered.\n"
-                    "Group admins can use /group_status to check setup.\n"
-                    "Announcements are off until a group admin enables them.",
+                    f"👑 <b>TRUMPTY ROYALE connected</b>\n\n"
+                    "This group is registered. The arena is open.",
+                    parse_mode="HTML",
+                )
+                await bot.send_message(
+                    event.chat.id,
+                    post_text,
+                    reply_markup=keyboard,
                     parse_mode="HTML",
                 )
             except Exception:
@@ -164,7 +170,7 @@ async def disable_announcements(message: Message, bot: Bot):
     await message.answer("🔕 TRUMPTY ROYALE announcements are now disabled.")
 
 
-@router.message(Command("groups"), F.chat.type == ChatType.PRIVATE)
+@router.message(Command("groups"))
 async def list_groups(message: Message):
     if not message.from_user or message.from_user.id not in settings.admin_ids:
         await message.answer("You are not authorized to use this command.")

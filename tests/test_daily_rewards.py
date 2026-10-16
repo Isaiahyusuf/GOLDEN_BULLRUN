@@ -61,10 +61,9 @@ def test_daily_settlement_returns_nothing_if_already_settled(monkeypatch):
     }
 
 
-def test_group_activity_is_not_gated_by_pvp_group_id(monkeypatch):
+def test_group_activity_is_not_gated_by_pvp_configuration(monkeypatch):
     from datetime import datetime, timezone
 
-    from app.config import settings
     from app.services.daily_rewards import record_group_message
 
     class Session:
@@ -83,7 +82,6 @@ def test_group_activity_is_not_gated_by_pvp_group_id(monkeypatch):
         def __call__(self):
             return Session()
 
-    monkeypatch.setattr(settings, "pvp_group_id", None)
     monkeypatch.setattr(
         "app.services.daily_rewards.SessionLocal",
         SessionMaker(),

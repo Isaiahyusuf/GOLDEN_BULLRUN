@@ -1,6 +1,37 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
+GROUP_PLAY_LORE = (
+    "The throne has stayed empty long enough. Name a rival, set your stake, "
+    "and see who holds the crown.",
+    "The hall is open. A rival, a stake, and three rounds stand between you "
+    "and the crown.",
+    "Old scores fade. New ones are settled here. Call out a rival and put "
+    "your points on the line.",
+    "Word from the arena: someone is looking for a match. Make your challenge "
+    "count.",
+    "No speeches needed. Name your rival, set the stake, and let the arena "
+    "decide.",
+    "The crown won't claim itself. Pick your opponent and fight for the top "
+    "of the leaderboard.",
+)
+
+
+def group_play_post(cycle: int = 0):
+    lore = GROUP_PLAY_LORE[cycle % len(GROUP_PLAY_LORE)]
+    return (
+        f"👑 <b>TRUMPTY ROYALE</b>\n\n{lore}",
+        InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="⚔️ ENTER THE ARENA",
+                    callback_data="group:play",
+                )]
+            ]
+        ),
+    )
+
+
 def main_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -75,17 +106,6 @@ def private_protection_link():
             [InlineKeyboardButton(
                 text="🛡️ VIEW POINTS PROTECTION",
                 url="https://t.me/TrumptyDumptybot?start=protect",
-            )]
-        ]
-    )
-
-
-def private_missions_link():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text="🎯 OPEN MISSIONS IN BOT",
-                url="https://t.me/TrumptyDumptybot?start=missions",
             )]
         ]
     )

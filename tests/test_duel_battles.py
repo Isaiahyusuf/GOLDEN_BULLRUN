@@ -3,7 +3,6 @@ import asyncio
 import pytest
 from sqlalchemy import delete
 
-from app.config import settings
 from app.database.connection import SessionLocal, engine, init_db
 from app.models.daily_reward import DailyActivity
 from app.models.duel import Duel
@@ -80,9 +79,7 @@ def run_async(coro):
     asyncio.run(runner())
 
 
-def test_defend_beats_attack_and_stale_moves_are_rejected(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
-
+def test_defend_beats_attack_and_stale_moves_are_rejected():
     async def run():
         await reset_players()
         duel_id = await new_accepted_duel()
@@ -121,9 +118,7 @@ def test_defend_beats_attack_and_stale_moves_are_rejected(monkeypatch):
     run_async(run())
 
 
-def test_matching_moves_draw_and_refund_both_wagers(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
-
+def test_matching_moves_draw_and_refund_both_wagers():
     async def run():
         await reset_players()
         duel_id = await new_accepted_duel()
@@ -169,9 +164,7 @@ def test_matching_moves_draw_and_refund_both_wagers(monkeypatch):
     run_async(run())
 
 
-def test_nonparticipant_cannot_submit_move(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
-
+def test_nonparticipant_cannot_submit_move():
     async def run():
         await reset_players()
         duel_id = await new_accepted_duel()

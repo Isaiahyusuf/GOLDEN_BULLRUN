@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.filters import Command
 from aiogram.types import (
     CallbackQuery,
@@ -8,7 +9,6 @@ from aiogram.types import (
 )
 from sqlalchemy import func, select
 
-from app.config import settings
 from app.database.connection import SessionLocal
 from app.models.user import User
 from app.services.duel_service import (
@@ -19,6 +19,7 @@ from app.services.duel_service import (
 )
 
 router = Router()
+GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
 
 
 def accept_keyboard(duel_id: int):
@@ -59,12 +60,8 @@ async def player_name(player_id: int) -> str:
 
 @router.message(Command("duel"))
 async def start_duel(message: Message):
-    if settings.pvp_group_id is None:
-        await message.answer("PvP is currently disabled. The official group is not configured yet.")
-        return
-
-    if message.chat.id != settings.pvp_group_id:
-        await message.answer("Start PvP challenges in the official group only.")
+    if message.chat.type not in GROUP_TYPES:
+        await message.answer("Start PvP challenges in a group where the bot is present.")
         return
 
     if message.from_user is None:

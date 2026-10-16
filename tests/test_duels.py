@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import delete
 
-from app.config import settings
 from app.database.connection import SessionLocal, engine, init_db
 from app.models.daily_reward import DailyActivity
 from app.models.duel import Duel
@@ -82,9 +81,25 @@ async def reset_players():
             ])
 
 
-def test_abandoned_accepted_duel_refunds_once(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
+def test_duels_can_start_in_any_group_without_a_group_id_setting():
+    other_group_id = -1009876543210
 
+    async def run():
+        await reset_players()
+        duel_id = await create_duel(
+            CHALLENGER_ID,
+            OPPONENT_ID,
+            500,
+            other_group_id,
+        )
+        async with SessionLocal() as session:
+            duel = await session.get(Duel, duel_id)
+            assert duel.chat_id == other_group_id
+
+    run_async(run())
+
+
+def test_abandoned_accepted_duel_refunds_once():
     async def run():
         await reset_players()
 
@@ -139,9 +154,7 @@ def test_abandoned_accepted_duel_refunds_once(monkeypatch):
     run_async(run())
 
 
-def test_recent_move_prevents_accepted_duel_expiry(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
-
+def test_recent_move_prevents_accepted_duel_expiry():
     async def run():
         await reset_players()
 
@@ -177,9 +190,7 @@ def test_recent_move_prevents_accepted_duel_expiry(monkeypatch):
     run_async(run())
 
 
-def test_pending_challenge_expires_without_deducting_points(monkeypatch):
-    monkeypatch.setattr(settings, "pvp_group_id", GROUP_ID)
-
+def test_pending_challenge_expires_without_deducting_points():
     async def run():
         await reset_players()
 

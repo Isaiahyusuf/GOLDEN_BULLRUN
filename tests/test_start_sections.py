@@ -1,5 +1,5 @@
 from app.handlers import start
-from app.keyboards.main_menu import main_menu
+from app.keyboards.main_menu import GROUP_PLAY_LORE, group_play_post, main_menu
 
 
 def test_about_and_how_to_play_are_available_from_main_menu():
@@ -26,13 +26,11 @@ def test_about_explains_daily_rewards_across_groups():
     assert "500, 350, 250, 150, or 100 points" in start.SECTIONS["about"]
 
 
-def test_rewards_explains_all_group_activity_without_pvp_configuration(monkeypatch):
-    monkeypatch.setattr(start.settings, "pvp_group_id", None)
-
+def test_rewards_explains_all_group_activity_and_pvp():
     text = start.get_section_text("rewards")
 
     assert "every group where the bot is present" in text
-    assert "PvP activity bonuses are unavailable" in text
+    assert "PvP works in any group where the bot is present" in text
 
 
 def test_support_button_opens_configured_telegram_username():
@@ -47,26 +45,16 @@ def test_support_button_opens_configured_telegram_username():
     assert support_buttons[0].url == "https://t.me/WitheringGrass13"
 
 
-def test_duel_section_explains_unconfigured_pvp(monkeypatch):
-    monkeypatch.setattr(start.settings, "pvp_group_id", None)
-
+def test_duel_section_explains_group_pvp():
     text = start.get_section_text("duel")
 
-    assert "currently unavailable" in text
+    assert "any group where the bot is present" in text
     assert "1,000,000 points" in text
     assert "First to 2 round wins" in text
 
 
-def test_duel_section_does_not_claim_pvp_is_disabled_when_configured(monkeypatch):
-    monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
-
-    assert "currently unavailable" not in start.get_section_text("duel")
-
-
-def test_group_play_uses_group_pvp_and_keeps_shop_private(monkeypatch):
-    monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
-
-    text = start.group_play_text(-100123)
+def test_group_play_uses_local_group_pvp_and_keeps_shop_private():
+    text = start.group_play_text()
 
     assert "/duel @username 1000" in text
     assert "Only that player can accept" in text
@@ -74,16 +62,21 @@ def test_group_play_uses_group_pvp_and_keeps_shop_private(monkeypatch):
     assert "PLAY IN PRIVATE CHAT" not in text
 
 
-def test_group_play_on_non_pvp_group_does_not_redirect_gameplay_to_private(
-    monkeypatch,
-):
-    monkeypatch.setattr(start.settings, "pvp_group_id", -100123)
+def test_group_play_posts_rotate_lore_with_arena_button():
+    first_text, first_keyboard = group_play_post(0)
+    second_text, second_keyboard = group_play_post(1)
+    first_button = first_keyboard.inline_keyboard[0][0]
+    second_button = second_keyboard.inline_keyboard[0][0]
 
-    text = start.group_play_text(-100456)
+    assert len(GROUP_PLAY_LORE) >= 4
+    assert first_text != second_text
+    assert first_button.callback_data == "group:play"
+    assert second_button.callback_data == "group:play"
+    assert first_button.text == "⚔️ ENTER THE ARENA"
+    assert second_button.text == first_button.text
+    from app.main import GROUP_PLAY_POST_INTERVAL_SECONDS
 
-    assert "configured official Telegram group" in text
-    assert "register here with /start" in text
-    assert "privately" not in text.lower()
+    assert GROUP_PLAY_POST_INTERVAL_SECONDS == 600
 
 
 def test_checkout_message_tracks_payment_configuration(monkeypatch):

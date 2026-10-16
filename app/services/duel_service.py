@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from app.config import settings
 from app.database.connection import SessionLocal
 from app.models.duel import Duel
 from app.models.transaction import PointTransaction
@@ -29,10 +28,8 @@ async def create_duel(
     wager: int,
     chat_id: int,
 ):
-    if settings.pvp_group_id is None:
-        raise DuelError("PvP is not configured yet.")
-    if chat_id != settings.pvp_group_id:
-        raise DuelError("Duels are only available in the official group.")
+    if chat_id >= 0:
+        raise DuelError("Duels are only available in group chats.")
     if challenger_id == opponent_id:
         raise DuelError("You cannot challenge yourself.")
     if wager <= 0 or wager > MAX_WAGER:
@@ -78,8 +75,8 @@ async def create_duel(
 
 
 async def accept_duel(duel_id: int, accepting_user_id: int, chat_id: int):
-    if settings.pvp_group_id is None or chat_id != settings.pvp_group_id:
-        raise DuelError("Duels are only available in the official group.")
+    if chat_id >= 0:
+        raise DuelError("Duels are only available in group chats.")
 
     async with SessionLocal() as session:
         async with session.begin():
@@ -134,8 +131,8 @@ async def submit_choice(duel_id: int, player_id: int, choice: str, chat_id: int,
     choice = choice.lower()
     if choice not in {"attack", "defend"}:
         raise DuelError("Choose ATTACK or DEFEND.")
-    if settings.pvp_group_id is None or chat_id != settings.pvp_group_id:
-        raise DuelError("Duels are only available in the official group.")
+    if chat_id >= 0:
+        raise DuelError("Duels are only available in group chats.")
 
     async with SessionLocal() as session:
         async with session.begin():

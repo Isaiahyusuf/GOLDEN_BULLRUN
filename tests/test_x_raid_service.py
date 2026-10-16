@@ -37,13 +37,16 @@ def test_campaign_rewards_are_not_x_engagement_rewards():
     assert x_raid_service.MAX_QUIZ_ATTEMPTS == 3
 
 
-def test_group_play_button_opens_private_bot_missions():
-    from app.keyboards.main_menu import private_missions_link
+def test_raid_quiz_prompts_force_reply_for_group_privacy_mode():
+    from aiogram.types import ForceReply
 
-    button = private_missions_link().inline_keyboard[0][0]
-
-    assert button.url == "https://t.me/TrumptyDumptybot?start=missions"
-    assert button.text == "🎯 OPEN MISSIONS IN BOT"
+    assert isinstance(
+        ForceReply(
+            selective=True,
+            input_field_placeholder="Your answer",
+        ),
+        ForceReply,
+    )
 
 
 def test_raid_admin_can_be_a_group_admin_not_configured_bot_admin(monkeypatch):

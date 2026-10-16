@@ -50,11 +50,11 @@ Do not expose `.env`, bot tokens, database credentials, or RPC credentials.
 ## X raid missions
 
 X missions link to an X post and ask a question about it. Players answer the
-quiz in the bot's private chat; a correct answer awards 200 competitive points
+quiz in the group or the bot; a correct answer awards 200 competitive points
 once per campaign, with up to three attempts. Points are awarded for the quiz
 only; liking, reposting, replying to, or following an X account is not required.
 
-An admin starts a quiz in the bot's private chat with:
+An admin starts a quiz in any group where the bot is present with:
 
 ```text
 /setraid https://x.com/name/status/POST_ID | Question about the post? | correct answer
@@ -64,9 +64,15 @@ Separate the post URL, question, and answer with `|`. The answer is matched
 without case or extra-whitespace differences. Use `/stopraid` to end the active
 quiz. No X app credentials, account connection, or API verification is needed.
 Configured bot admins and admins of any active registered group can manage
-quizzes from the bot's private chat. Telegram must allow the bot to check its
-admin membership in a group; make the bot an administrator there if group-admin
-verification fails.
+quizzes in the group. Telegram must allow the bot to check its admin membership
+in a group; make the bot an administrator there if group-admin verification fails.
+
+## Group play
+
+All active groups where the bot is present receive a rotating, lore-style Play
+post with an arena button every 10 minutes. PvP and game commands work in each
+group. Use `/duel @username 1000` to challenge a player; only that named player
+can accept. Purchases and payment checkout remain in the bot's private chat.
 
 ## Payment and reward safety
 

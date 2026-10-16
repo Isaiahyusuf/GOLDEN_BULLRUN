@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     bot_token: str
-    pvp_group_id: int | None = None
     admin_telegram_id: int = 653179867
     admin_telegram_ids: str = '653179867,8435563121'
 
