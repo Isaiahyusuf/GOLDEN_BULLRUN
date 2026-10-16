@@ -4,44 +4,49 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
+from app.config import settings
 from app.keyboards.main_menu import (
     main_menu,
     back_menu,
     shop_menu,
     private_shop_link,
     private_protection_link,
-    payment_unavailable_menu,
     protection_menu,
 )
 from app.services.points_service import register_player, get_player
 from app.services.leaderboard_service import get_leaderboard
 from app.services.protection_service import get_protection_status
+from app.services.solana_service import payments_configured
 
 router = Router()
 
 WELCOME_TEXT = (
     "👑 <b>TRUMPTY ROYALE</b>\n"
     "<i>The battle for the throne starts here.</i>\n\n"
-    "💰 Earn points. Challenge rivals. Claim glory.\n"
-    "🎯 Complete missions and climb the rankings.\n\n"
+    "💰 Build your competitive points. Challenge rivals. Climb the rankings.\n"
+    "🎯 Missions and reward payouts are not available yet.\n\n"
     "━━━━━━━━━━━━━━━━━━\n"
     "⚡ <b>Your kingdom. Your strategy. Your crown.</b>\n\n"
     "👇 Choose your next move."
 )
 
-PACKAGES = {
-    "1": ("Starter Pack", 5_000, 10_000),
-    "2": ("Warrior Pack", 10_000, 22_000),
-    "3": ("Champion Pack", 15_000, 36_000),
-    "4": ("Royal Pack", 20_000, 52_000),
-    "5": ("Legend Pack", 25_000, 70_000),
-}
-
 SECTIONS = {
+    "about": (
+        "👑 <b>ABOUT TRUMPTY ROYALE</b>\n\n"
+        "TRUMPTY ROYALE is a Telegram game where players build competitive "
+        "points, challenge rivals in group duels, and climb the leaderboard.\n\n"
+        "🪙 Competitive points are gameplay points. Purchased credits are "
+        "tracked separately and do not increase your leaderboard rank.\n"
+        "🛡️ Points Protection has permanent progression ranks and can preserve "
+        "part of your points above the 10,000 baseline at a weekly reset.\n"
+        "🥊 Duels use points and are limited to the configured official group.\n\n"
+        "Payments are verified on Solana. Never send a seed phrase or private key."
+    ),
     "play": (
         "⚔️ <b>ROYALE ARENA</b>\n\n"
-        "Complete missions, build your points balance and prepare to challenge rivals.\n\n"
-        "🥊 PvP matches are for the designated Telegram group only."
+        "Build your competitive points balance and prepare to challenge rivals.\n\n"
+        "🥊 PvP is available only in the configured official Telegram group.\n"
+        "🎯 Mission rewards are not claimable yet."
     ),
     "missions": (
         "🎯 <b>MISSION CONTROL</b>\n\n"
@@ -55,23 +60,63 @@ SECTIONS = {
     ),
     "duel": (
         "🥊 <b>PVP ARENA</b>\n\n"
-        "PvP is played in the official TRUMPTY ROYALE group, not in private chat.\n\n"
-        "Open the group and use the duel options there. Wagers will only be enabled once the group and duel rules are configured."
+        "Duels are played in the official Telegram group, not in private chat.\n\n"
+        "Challenge a registered player with:\n"
+        "<code>/duel @username wager</code>\n\n"
+        "Both players must have opened the bot and sent /start. Wagers must be "
+        "between 1 and 1,000,000 points. The challenged player accepts the "
+        "posted duel; both wagers are then reserved.\n\n"
+        "Each round, both players secretly choose ATTACK or DEFEND. DEFEND "
+        "beats ATTACK; matching choices draw the round. First to 2 round wins "
+        "takes both wagers. A tied score after 3 rounds refunds both wagers. "
+        "An unanswered challenge expires after 5 minutes; an inactive accepted "
+        "duel expires after 15 minutes and refunds both wagers.\n\n"
+        "Protection does not prevent duel losses."
     ),
     "rewards": (
         "💎 <b>ROYAL REWARDS</b>\n\n"
-        "Weekly rewards are planned for eligible top players.\n"
-        "Final eligibility and payout rules will be published before rewards go live."
+        "Weekly leaderboard snapshots and reward calculations are recorded by "
+        "the game. Winner wallet collection and manual payout tools are not "
+        "available yet, so rewards are not currently claimable."
     ),
     "help": (
         "📜 <b>HOW TO PLAY</b>\n\n"
-        "👑 Register to create your profile.\n"
-        "🎯 Complete eligible missions.\n"
-        "🥊 Play PvP in the designated group.\n"
-        "🏆 Compete for eligible weekly rewards.\n"
-        "🪙 Make purchases only through the bot's private chat."
+        "1. <b>Register:</b> send /start in the bot. New profiles begin with "
+        "10,000 competitive points.\n"
+        "2. <b>Check your account:</b> use /profile or /balance. Competitive "
+        "points and purchased credits are separate; credits do not raise rank.\n"
+        "3. <b>Play PvP:</b> in the official group, challenge with "
+        "<code>/duel @username wager</code>. Both players must be registered. "
+        "Use the duel buttons to choose ATTACK or DEFEND each round.\n"
+        "4. <b>Protect points:</b> view Points Protection for your rank, price, "
+        "expiry, and weekly-reset protection. It never protects PvP losses.\n"
+        "5. <b>Shop privately:</b> open the shop only in the bot's private chat. "
+        "Payments are checked on Solana before credits or protection are granted.\n\n"
+        "Missions are not claimable yet. Weekly reward payouts are not yet "
+        "available. Check the PvP Arena for current group availability."
     ),
 }
+
+
+def get_section_text(section: str) -> str:
+    if section == "duel" and settings.pvp_group_id is None:
+        return (
+            SECTIONS["duel"]
+            + "\n\n🔴 <b>PvP is currently unavailable.</b>\n"
+            "The official group has not been configured for the bot yet."
+        )
+    return SECTIONS[section]
+
+
+def get_payment_status_text() -> str:
+    if payments_configured():
+        return (
+            "✅ Checkout is enabled. Payments are verified on Solana before delivery."
+        )
+    return (
+        "🔒 Checkout is currently unavailable. Do not send tokens outside the bot's checkout."
+    )
+
 
 SHOP_TEXT = (
     "🪙 <b>TRUMPTY ROYALE — POINTS SHOP</b>\n\n"
@@ -84,7 +129,7 @@ SHOP_TEXT = (
     "💎 <b>Legend:</b> 70,000 credits · 25,000 $TRUMPTY\n\n"
     "🛡️ <b>Points Protection:</b> starting at 30,000 $TRUMPTY for 7 days.\n"
     "<i>Price and points preserved rise with permanent protection rank (max rank 5; 150,000 $TRUMPTY). It never prevents duel losses.</i>\n\n"
-    "Select an option below. Payments are not active yet."
+    "Select an option below."
 )
 
 PROTECTION_TEXT = (
@@ -93,8 +138,7 @@ PROTECTION_TEXT = (
     "💎 Starting price: <b>30,000 $TRUMPTY</b>; each rank costs more, capped at <b>150,000 $TRUMPTY</b>.\n"
     "⏳ Each activation lasts <b>7 days</b>; maximum rank: <b>5</b>.\n\n"
     "Protection does not cover points lost in PvP or override other game rules.\n"
-    "It must be renewed after expiry.\n\n"
-    "<i>Purchases are not active yet. No payment has been requested.</i>"
+    "It must be renewed after expiry."
 )
 
 
@@ -130,10 +174,13 @@ async def send_protection_screen(target, telegram_id: int, edit: bool = False):
     else:
         text = (
             PROTECTION_TEXT
-            + f"\n\n🔴 <b>Status: INACTIVE</b>\n"
+            + "\n\n"
+            + f"🔴 <b>Status: INACTIVE</b>\n"
             f"🛡️ Permanent rank: <b>{status['rank']}/5</b>\n"
             f"💎 Next activation: <b>{status['price']:,} $TRUMPTY</b>"
         )
+
+    text += f"\n\n{get_payment_status_text()}"
 
     if edit:
         await target.edit_text(
@@ -157,7 +204,11 @@ async def start_command(message: Message):
     player = await register_player(message.from_user)
 
     if start_arg == "shop":
-        await message.answer(SHOP_TEXT, reply_markup=shop_menu(), parse_mode="HTML")
+        await message.answer(
+            f"{SHOP_TEXT}\n\n{get_payment_status_text()}",
+            reply_markup=shop_menu(),
+            parse_mode="HTML",
+        )
         return
 
     if start_arg == "protect":
@@ -212,33 +263,20 @@ async def balance_command(message: Message):
 
 @router.message(Command("help"))
 async def help_command(message: Message):
-    await message.answer(SECTIONS["help"], reply_markup=back_menu(), parse_mode="HTML")
-
-
-@router.callback_query(F.data.startswith("buy:"))
-async def buy_package_callback(callback: CallbackQuery):
-    if callback.message.chat.type != "private":
-        await callback.answer("Open the shop in the bot's private chat.", show_alert=True)
-        return
-
-    package_id = callback.data.split(":", 1)[1]
-    package = PACKAGES.get(package_id)
-
-    if package is None:
-        await callback.answer("Package not found.", show_alert=True)
-        return
-
-    name, price, credits = package
-    await callback.message.edit_text(
-        f"🪙 <b>{name}</b>\n\n"
-        f"Price: <b>{price:,} $TRUMPTY</b>\n"
-        f"Credits: <b>{credits:,}</b>\n\n"
-        "🔒 <b>Checkout is not enabled yet.</b>\n"
-        "Do not send tokens until the official receiving wallet and on-chain verification are configured.",
-        reply_markup=payment_unavailable_menu(),
+    await message.answer(
+        get_section_text("help"),
+        reply_markup=back_menu(),
         parse_mode="HTML",
     )
-    await callback.answer()
+
+
+@router.message(Command("about"))
+async def about_command(message: Message):
+    await message.answer(
+        SECTIONS["about"],
+        reply_markup=back_menu(),
+        parse_mode="HTML",
+    )
 
 
 @router.callback_query(F.data.startswith("menu:"))
@@ -281,7 +319,9 @@ async def menu_callback(callback: CallbackQuery):
         )
     elif section == "shop":
         await callback.message.edit_text(
-            SHOP_TEXT, reply_markup=shop_menu(), parse_mode="HTML"
+            f"{SHOP_TEXT}\n\n{get_payment_status_text()}",
+            reply_markup=shop_menu(),
+            parse_mode="HTML",
         )
     elif section == "protect":
         if callback.message.chat.type != "private":
@@ -343,7 +383,9 @@ async def menu_callback(callback: CallbackQuery):
         )
     elif section in SECTIONS:
         await callback.message.edit_text(
-            SECTIONS[section], reply_markup=back_menu(), parse_mode="HTML"
+            get_section_text(section),
+            reply_markup=back_menu(),
+            parse_mode="HTML",
         )
     else:
         await callback.answer("That section isn't available yet.")

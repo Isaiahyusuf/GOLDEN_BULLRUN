@@ -24,6 +24,7 @@ def main_menu():
             ],
             [
                 InlineKeyboardButton(text="📜 HOW TO PLAY", callback_data="menu:help"),
+                InlineKeyboardButton(text="ℹ️ ABOUT", callback_data="menu:about"),
             ],
         ]
     )
