@@ -83,7 +83,7 @@ def test_unregistered_opponent_gets_start_registration_button():
         button = keyboard.inline_keyboard[0][0]
         assert "tap Start below to register" in text
         assert button.text == "🚀 TAP START TO REGISTER"
-        assert button.url == "https://t.me/TrumptyDumptybot?start=register"
+        assert button.url == "https://t.me/Trumpty_dumptybot?start=register"
 
     asyncio.run(run())
 

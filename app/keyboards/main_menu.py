@@ -94,7 +94,7 @@ def private_shop_link():
         inline_keyboard=[
             [InlineKeyboardButton(
                 text="🪙 OPEN PRIVATE SHOP",
-                url="https://t.me/TrumptyDumptybot?start=shop",
+                url="https://t.me/Trumpty_dumptybot?start=shop",
             )]
         ]
     )
@@ -105,14 +105,14 @@ def private_protection_link():
         inline_keyboard=[
             [InlineKeyboardButton(
                 text="🛡️ BUY / RENEW PROTECTION",
-                url="https://t.me/TrumptyDumptybot?start=protect",
+                url="https://t.me/Trumpty_dumptybot?start=protect",
             )]
         ]
     )
 
 
 def private_x_connect_link():
-    return "https://t.me/TrumptyDumptybot?start=connectx"
+    return "https://t.me/Trumpty_dumptybot?start=connectx"
 
 
 def x_authorization_menu(authorization_url: str):

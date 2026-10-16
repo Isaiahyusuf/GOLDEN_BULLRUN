@@ -38,7 +38,7 @@ def registration_keyboard():
             [
                 InlineKeyboardButton(
                     text="🚀 TAP START TO REGISTER",
-                    url="https://t.me/TrumptyDumptybot?start=register",
+                    url="https://t.me/Trumpty_dumptybot?start=register",
                 )
             ]
         ]

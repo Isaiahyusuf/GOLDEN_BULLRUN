@@ -52,12 +52,14 @@ def test_support_button_opens_configured_telegram_username():
 
 
 def test_protection_link_opens_private_protection_purchase_flow():
-    from app.keyboards.main_menu import private_protection_link
+    from app.keyboards.main_menu import private_protection_link, private_shop_link
 
     button = private_protection_link().inline_keyboard[0][0]
+    shop_button = private_shop_link().inline_keyboard[0][0]
 
     assert button.text == "🛡️ BUY / RENEW PROTECTION"
-    assert button.url == "https://t.me/TrumptyDumptybot?start=protect"
+    assert button.url == "https://t.me/Trumpty_dumptybot?start=protect"
+    assert shop_button.url == "https://t.me/Trumpty_dumptybot?start=shop"
 
 
 def test_duel_section_explains_group_pvp():
