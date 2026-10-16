@@ -7,9 +7,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 def normalize_database_url(value):
-    url = make_url(value)
+    if value is None:
+        return "postgresql+asyncpg://localhost/trumpty_royale"
 
-    if url.drivername in {"postgres", "postgresql"}:
+    value = str(value).strip()
+    if not value:
+        return "postgresql+asyncpg://localhost/trumpty_royale"
+
+    url = make_url(value)
+    drivername = url.drivername.lower()
+
+    if drivername in {"postgres", "postgresql"} or drivername.startswith("postgresql+"):
         url = url.set(drivername="postgresql+asyncpg")
 
     return url.render_as_string(hide_password=False)
