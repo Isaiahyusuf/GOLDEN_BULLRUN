@@ -17,6 +17,18 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     )
 
 
+def test_support_button_opens_configured_telegram_username():
+    support_buttons = [
+        button
+        for row in main_menu().inline_keyboard
+        for button in row
+        if button.text == "🆘 SUPPORT"
+    ]
+
+    assert len(support_buttons) == 1
+    assert support_buttons[0].url == "https://t.me/WitheringGrass13"
+
+
 def test_duel_section_explains_unconfigured_pvp(monkeypatch):
     monkeypatch.setattr(start.settings, "pvp_group_id", None)
 
