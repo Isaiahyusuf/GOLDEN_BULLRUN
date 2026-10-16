@@ -119,7 +119,7 @@ def x_authorization_menu(authorization_url: str):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="𝕏 AUTHORIZE X ACCOUNT",
+                text="𝕏 CONNECT ACCOUNT",
                 url=authorization_url,
             )]
         ]

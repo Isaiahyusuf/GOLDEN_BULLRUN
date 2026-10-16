@@ -27,12 +27,9 @@ router = Router()
 
 WELCOME_TEXT = (
     "👑 <b>TRUMPTY ROYALE</b>\n"
-    "<i>The battle for the throne starts here.</i>\n\n"
-    "💰 Build your competitive points. Challenge rivals. Climb the rankings.\n"
-    "🎯 Join X post quizzes and earn points for correct answers.\n\n"
-    "━━━━━━━━━━━━━━━━━━\n"
-    "⚡ <b>Your kingdom. Your strategy. Your crown.</b>\n\n"
-    "👇 Choose your next move."
+    "Earn competitive points, challenge rivals in group duels, and climb the "
+    "rankings. Take part in X post quizzes to earn more points.\n\n"
+    "👇 Choose an option below."
 )
 
 SECTIONS = {
@@ -45,7 +42,7 @@ SECTIONS = {
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
         "🥊 Duels are played in any group where the bot is present.\n"
-        "𝕏 X post quizzes award competitive points after a correct answer and "
+        "X post quizzes award competitive points after a correct answer and "
         "verified Like, Repost, Reply, and Follow actions.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
         "UTC day, the top five earn 500, 350, 250, 150, or 100 points.\n\n"
@@ -59,7 +56,7 @@ SECTIONS = {
         "Only the mentioned player can accept. Both wagers are reserved after "
         "they accept. If they are not registered, they can tap the Start "
         "button in the group prompt to register.\n\n"
-        "𝕏 X post quizzes are available with /missions in this group."
+        "X post quizzes are available with /missions in this group."
     ),
     "missions": (
         "🎯 <b>X RAID MISSIONS</b>\n\n"
@@ -69,8 +66,8 @@ SECTIONS = {
     ),
     "leaderboard": (
         "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
-        "The leaderboard will show eligible competitive points and weekly standings.\n\n"
-        "Buying credits will not automatically buy a leaderboard position."
+        "Rankings are based on competitive point balances. Purchased credits "
+        "are tracked separately and do not affect your position."
     ),
     "duel": (
         "🥊 <b>PVP ARENA</b>\n\n"

@@ -31,6 +31,7 @@ def test_about_and_how_to_play_are_available_from_main_menu():
 def test_about_explains_daily_rewards_across_groups():
     assert "every group where the bot is present" in start.SECTIONS["about"]
     assert "500, 350, 250, 150, or 100 points" in start.SECTIONS["about"]
+    assert "𝕏 X" not in start.SECTIONS["about"]
 
 
 def test_rewards_explains_all_group_activity_and_pvp():
@@ -39,6 +40,14 @@ def test_rewards_explains_all_group_activity_and_pvp():
     assert "every group where the bot is present" in text
     assert "PvP works in any group where the bot is present" in text
     assert "Purchased credits do not count as competitive points" not in text
+
+
+def test_static_leaderboard_copy_matches_current_balance_ranking():
+    text = start.SECTIONS["leaderboard"]
+
+    assert "competitive point balances" in text
+    assert "Purchased credits are tracked separately" in text
+    assert "weekly standings" not in text
 
 
 def test_support_button_opens_configured_telegram_username():
@@ -62,6 +71,15 @@ def test_protection_link_opens_private_protection_purchase_flow():
     assert button.text == "🛡️ BUY / RENEW PROTECTION"
     assert button.url == "https://t.me/Trumpty_dumptybot?start=protect"
     assert shop_button.url == "https://t.me/Trumpty_dumptybot?start=shop"
+
+
+def test_x_authorization_button_uses_clear_action_label():
+    from app.keyboards.main_menu import x_authorization_menu
+
+    button = x_authorization_menu("https://x.example/authorize").inline_keyboard[0][0]
+
+    assert button.text == "𝕏 CONNECT ACCOUNT"
+    assert button.url == "https://x.example/authorize"
 
 
 def test_leaderboard_uses_real_line_breaks_and_consistent_player_blocks():
