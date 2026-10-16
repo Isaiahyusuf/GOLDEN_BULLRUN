@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import (
@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database.connection import SessionLocal, engine, init_db
 from app.handlers.payments import router as payments_router
-from app.handlers.start import router
+from app.handlers.start import SECTIONS, router
 from app.handlers.duels import router as duels_router
 from app.handlers.groups import router as groups_router
 from app.handlers.raids import router as raids_router
@@ -22,6 +22,12 @@ from app.models.group import TelegramGroup
 from app.services.duel_service import expire_stale_duels
 from app.services.daily_rewards import settle_completed_daily_rewards
 from app.services.group_play_posts import replace_group_play_post
+from app.services.group_scheduled_posts import (
+    HOW_TO_PLAY_POST_SECONDS,
+    RAID_ADMIN_REMINDER_SECONDS,
+    post_hourly_how_to_play,
+    remind_group_admins_to_start_raids,
+)
 from app.services.protection_service import recover_weekly_resets
 from app.services.weekly_rewards import get_completed_week_key
 
@@ -93,6 +99,30 @@ async def group_play_posts_loop(bot):
             logging.exception("Group play prompt cycle failed")
 
         await asyncio.sleep(GROUP_PLAY_POST_INTERVAL_SECONDS)
+
+
+async def raid_admin_reminders_loop(bot):
+    while True:
+        await asyncio.sleep(RAID_ADMIN_REMINDER_SECONDS)
+        try:
+            sent = await remind_group_admins_to_start_raids(bot)
+            logging.info("Sent %s group raid-admin reminders", sent)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.exception("Raid-admin reminder cycle failed")
+
+
+async def hourly_how_to_play_loop(bot):
+    while True:
+        await asyncio.sleep(HOW_TO_PLAY_POST_SECONDS)
+        try:
+            sent = await post_hourly_how_to_play(bot, SECTIONS["help"])
+            logging.info("Posted hourly How to Play in %s groups", sent)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.exception("Hourly How to Play post cycle failed")
 
 
 async def expire_duels_loop(bot):
@@ -240,6 +270,8 @@ async def main():
 
         background_tasks = [
             asyncio.create_task(group_play_posts_loop(bot)),
+            asyncio.create_task(raid_admin_reminders_loop(bot)),
+            asyncio.create_task(hourly_how_to_play_loop(bot)),
             asyncio.create_task(expire_duels_loop(bot)),
             asyncio.create_task(daily_rewards_loop(bot)),
             asyncio.create_task(weekly_reset_loop()),

@@ -16,14 +16,14 @@ def test_about_and_how_to_play_are_available_from_main_menu():
 
     assert "menu:about" in callbacks
     assert "menu:help" in callbacks
-    assert "<code>/pvp @username 100</code>" in start.SECTIONS["help"]
-    assert "any group where the bot is present" in start.SECTIONS["help"]
+    assert "<code>/pvp @username amount</code>" in start.SECTIONS["help"]
+    assert "any active group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
-    assert "X post quiz" in start.SECTIONS["help"]
-    assert "No X engagement is required" in start.SECTIONS["help"]
-    assert "Weekly token reward payouts are not available yet." in (
+    assert "X post quizzes" in start.SECTIONS["help"]
+    assert "No likes, reposts, replies, or follows are required" in (
         start.SECTIONS["help"]
     )
+    assert "Weekly token payouts are not available yet." in start.SECTIONS["help"]
 
 
 def test_about_explains_daily_rewards_across_groups():

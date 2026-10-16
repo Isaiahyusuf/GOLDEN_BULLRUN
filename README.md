@@ -86,6 +86,10 @@ bot's private chat.
 The bot deletes its previous tracked arena post before publishing the next
 one. Give the bot permission to delete its own messages in each group.
 
+When no X quiz is active, the bot mentions that group's administrators in a
+raid-start reminder every 15 minutes. It also posts the detailed How to Play
+guide to every active group once per hour.
+
 ## Payment and reward safety
 
 - Live payments must remain disabled until payment verification is reviewed.
