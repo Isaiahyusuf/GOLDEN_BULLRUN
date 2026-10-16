@@ -49,10 +49,11 @@ async def test_verified_protection_purchase_activates_in_same_transaction(
     )
     user = SimpleNamespace(
         protection_expires_at=fixed_now + timedelta(days=2),
+        protection_rank=0,
         purchased_credits=500,
     )
     session = MagicMock()
-    session.scalar = AsyncMock(side_effect=[payment, None, user])
+    session.scalar = AsyncMock(side_effect=[user, payment, None])
     session.add = MagicMock()
 
     transaction_context = MagicMock()
@@ -87,12 +88,14 @@ async def test_verified_protection_purchase_activates_in_same_transaction(
     assert payment.status == "credited"
     assert payment.signature == "verified-signature"
     assert user.protection_expires_at == fixed_now + timedelta(days=9)
+    assert user.protection_rank == 1
     assert user.purchased_credits == 500
     assert result["protection_expires_at"] == fixed_now + timedelta(days=9)
+    assert result["protection_rank"] == 1
     assert result["credits"] == 0
     ledger_entry = session.add.call_args.args[0]
     assert ledger_entry.reason == (
-        "protection_purchase:protection-purchase-reference"
+        "protection_rank:1:protection-purchase-reference"
     )
 
 

@@ -82,16 +82,16 @@ SHOP_TEXT = (
     "🛡️ <b>Champion:</b> 36,000 credits · 15,000 $TRUMPTY\n"
     "👑 <b>Royal:</b> 52,000 credits · 20,000 $TRUMPTY\n"
     "💎 <b>Legend:</b> 70,000 credits · 25,000 $TRUMPTY\n\n"
-    "🛡️ <b>Points Protection:</b> 30,000 $TRUMPTY for 7 days.\n"
-    "<i>Protection is intended to preserve eligible points through the weekly reset, not prevent duel losses.</i>\n\n"
+    "🛡️ <b>Points Protection:</b> starting at 30,000 $TRUMPTY for 7 days.\n"
+    "<i>Price and points preserved rise with permanent protection rank (max rank 5; 150,000 $TRUMPTY). It never prevents duel losses.</i>\n\n"
     "Select an option below. Payments are not active yet."
 )
 
 PROTECTION_TEXT = (
     "🛡️ <b>POINTS PROTECTION</b>\n\n"
-    "Keep your eligible points balance through the weekly reset.\n\n"
-    "💎 Price: <b>30,000 $TRUMPTY</b>\n"
-    "⏳ Duration: <b>7 days</b>\n\n"
+    "Build a permanent protection rank to preserve more points at the weekly reset.\n\n"
+    "💎 Starting price: <b>30,000 $TRUMPTY</b>; each rank costs more, capped at <b>150,000 $TRUMPTY</b>.\n"
+    "⏳ Each activation lasts <b>7 days</b>; maximum rank: <b>5</b>.\n\n"
     "Protection does not cover points lost in PvP or override other game rules.\n"
     "It must be renewed after expiry.\n\n"
     "<i>Purchases are not active yet. No payment has been requested.</i>"
@@ -119,14 +119,20 @@ async def send_protection_screen(target, telegram_id: int, edit: bool = False):
         text = (
             "🛡️ <b>POINTS PROTECTION</b>\n\n"
             "🟢 <b>Status: ACTIVE</b>\n"
+            f"🛡️ Rank: <b>{status['rank']}/5</b> · "
+            f"weekly points preserved: <b>{status['protected_percentage']}%</b> "
+            "above 10,000\n"
+            f"💎 Next activation: <b>{status['price']:,} $TRUMPTY</b>\n"
             f"⏳ Expires: <b>{expiry_text}</b>\n\n"
-            "Your eligible balance is protected at the weekly reset while this remains active.\n"
+            "The protected share is based on points above the 10,000 baseline.\n"
             "PvP losses are not protected."
         )
     else:
         text = (
             PROTECTION_TEXT
-            + "\n\n🔴 <b>Status: INACTIVE</b>"
+            + f"\n\n🔴 <b>Status: INACTIVE</b>\n"
+            f"🛡️ Permanent rank: <b>{status['rank']}/5</b>\n"
+            f"💎 Next activation: <b>{status['price']:,} $TRUMPTY</b>"
         )
 
     if edit:

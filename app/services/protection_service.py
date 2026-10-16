@@ -12,7 +12,29 @@ from app.models.reward import WeeklyRewardPool
 
 PROTECTION_PRICE = 30_000
 PROTECTION_DAYS = 7
+MAX_PROTECTION_RANK = 5
+MAX_PROTECTION_PRICE = 150_000
 STARTING_POINTS = 10_000
+
+
+def get_protection_rank(player):
+    return min(max(int(getattr(player, "protection_rank", 0)), 0), MAX_PROTECTION_RANK)
+
+
+def get_protection_price(current_rank):
+    next_rank = min(max(current_rank, 0) + 1, MAX_PROTECTION_RANK)
+    return min(PROTECTION_PRICE * next_rank, MAX_PROTECTION_PRICE)
+
+
+def get_protected_percentage(rank):
+    return min(max(rank, 0), MAX_PROTECTION_RANK) * 20
+
+
+def protected_points_after_reset(points, rank):
+    if points <= STARTING_POINTS:
+        return points
+    protected_excess = (points - STARTING_POINTS) * get_protected_percentage(rank) // 100
+    return STARTING_POINTS + protected_excess
 
 
 def utc_now():
@@ -44,7 +66,11 @@ async def get_protection_status(telegram_id):
         return {
             "active": active,
             "expires_at": player.protection_expires_at if active else None,
-            "price": PROTECTION_PRICE,
+            "rank": get_protection_rank(player),
+            "protected_percentage": get_protected_percentage(
+                get_protection_rank(player)
+            ),
+            "price": get_protection_price(get_protection_rank(player)),
             "duration_days": PROTECTION_DAYS,
         }
 
@@ -64,6 +90,10 @@ async def activate_protection(telegram_id, now=None):
             if player is None:
                 return False
 
+            player.protection_rank = min(
+                get_protection_rank(player) + 1,
+                MAX_PROTECTION_RANK,
+            )
             expiry = player.protection_expires_at
 
             if expiry is not None and expiry.tzinfo is None:
@@ -262,16 +292,24 @@ async def apply_weekly_reset(reset_key, now=None):
                 for player in players:
                     if protection_is_active(player, now):
                         skipped_count += 1
-                        continue
+                        protected_points = protected_points_after_reset(
+                            player.points,
+                            get_protection_rank(player),
+                        )
+                        if protected_points == player.points:
+                            continue
 
                     old_points = player.points
-                    player.points = STARTING_POINTS
+                    if protection_is_active(player, now):
+                        player.points = protected_points
+                    else:
+                        player.points = STARTING_POINTS
                     reset_count += 1
 
                     session.add(
                         PointTransaction(
                             telegram_id=player.telegram_id,
-                            amount=STARTING_POINTS - old_points,
+                            amount=player.points - old_points,
                             reason=f"weekly_reset:{reset_key}",
                         )
                     )

@@ -15,7 +15,12 @@ from app.services.solana_service import (
     payments_configured,
     verify_token_payment,
 )
-from app.services.protection_service import PROTECTION_DAYS, PROTECTION_PRICE
+from app.services.protection_service import (
+    MAX_PROTECTION_RANK,
+    PROTECTION_DAYS,
+    get_protection_price,
+    get_protection_rank,
+)
 
 
 PACKAGES = {
@@ -35,6 +40,10 @@ def extend_protection(user: User, now: datetime) -> datetime:
 
     base = expiry if expiry is not None and expiry > now else now
     user.protection_expires_at = base + timedelta(days=PROTECTION_DAYS)
+    user.protection_rank = min(
+        get_protection_rank(user) + 1,
+        MAX_PROTECTION_RANK,
+    )
     return user.protection_expires_at
 
 
@@ -70,14 +79,10 @@ async def create_purchase_intent(
         raise PaymentServiceError("That package does not exist.")
 
     buyer_wallet = validate_buyer_wallet(buyer_wallet)
-    if is_protection:
-        name, price, credits = (
-            "Points Protection",
-            PROTECTION_PRICE,
-            0,
-        )
-    else:
+    if not is_protection:
         name, price, credits = package
+    else:
+        name, credits = "Points Protection", 0
 
     async with SessionLocal() as session:
         async with session.begin():
@@ -90,6 +95,23 @@ async def create_purchase_intent(
                 raise PaymentServiceError(
                     "Please send /start in the bot's private chat before purchasing."
                 )
+
+            if is_protection:
+                pending_protection = await session.scalar(
+                    select(Payment.id)
+                    .where(
+                        Payment.telegram_id == telegram_id,
+                        Payment.package_id == PROTECTION_PACKAGE_ID,
+                        Payment.status == "pending",
+                    )
+                    .with_for_update()
+                )
+                if pending_protection is not None:
+                    raise PaymentServiceError(
+                        "You already have a pending protection purchase. "
+                        "Complete or resolve it before creating another."
+                    )
+                price = get_protection_price(get_protection_rank(user))
 
             payment = Payment(
                 telegram_id=telegram_id,
@@ -127,6 +149,14 @@ async def submit_purchase_signature(
     try:
         async with SessionLocal() as session:
             async with session.begin():
+                user = await session.scalar(
+                    select(User)
+                    .where(User.telegram_id == telegram_id)
+                    .with_for_update()
+                )
+                if user is None:
+                    raise PaymentServiceError("Your player account could not be found.")
+
                 payment = await session.scalar(
                     select(Payment)
                     .where(
@@ -159,14 +189,6 @@ async def submit_purchase_signature(
                         "That transaction signature has already been submitted."
                     )
 
-                user = await session.scalar(
-                    select(User)
-                    .where(User.telegram_id == telegram_id)
-                    .with_for_update()
-                )
-                if user is None:
-                    raise PaymentServiceError("Your player account could not be found.")
-
                 verification = await verify_token_payment(
                     signature,
                     int(payment.token_amount),
@@ -187,12 +209,17 @@ async def submit_purchase_signature(
                         PointTransaction(
                             telegram_id=telegram_id,
                             amount=0,
-                            reason=f"protection_purchase:{payment.purchase_reference}",
+                            reason=(
+                                f"protection_rank:{user.protection_rank}:"
+                                f"{payment.purchase_reference}"
+                            ),
                         )
                     )
+                    protection_rank = user.protection_rank
                 else:
                     user.purchased_credits += payment.credits
                     expires_at = None
+                    protection_rank = None
 
                 result = {
                     "package_id": payment.package_id,
@@ -201,6 +228,7 @@ async def submit_purchase_signature(
                     "signature": verification["signature"],
                     "received_at": received_at,
                     "protection_expires_at": expires_at,
+                    "protection_rank": protection_rank,
                 }
 
         return result

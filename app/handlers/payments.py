@@ -14,7 +14,10 @@ from app.services.payment_service import (
 )
 from app.services.solana_service import payments_configured
 from app.keyboards.main_menu import payment_unavailable_menu
-from app.services.protection_service import PROTECTION_PRICE
+from app.services.protection_service import (
+    get_protected_percentage,
+    get_protection_status,
+)
 
 
 router = Router()
@@ -56,6 +59,16 @@ async def begin_purchase_flow(
         if credits
         else "Protection duration: <b>7 days</b>\n\n"
     )
+    if package_id == PROTECTION_PACKAGE_ID:
+        status = await get_protection_status(callback.from_user.id)
+        next_rank = min(status["rank"] + 1, 5)
+        product_details = (
+            f"Rank after purchase: <b>{next_rank}/5</b>\n"
+            f"Points preserved at weekly reset: "
+            f"<b>{get_protected_percentage(next_rank)}%</b> of points above "
+            f"{10_000:,}.\n"
+            "PvP losses are not protected.\n\n"
+        )
     await callback.message.edit_text(
         f"🪙 <b>{name}</b>\n\n"
         f"Price: <b>{price:,} $TRUMPTY</b>\n"
@@ -90,12 +103,27 @@ async def begin_purchase(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "protect:buy")
 async def begin_protection_purchase(callback: CallbackQuery, state: FSMContext):
+    if callback.message is None or callback.message.chat.type != "private":
+        await callback.answer(
+            "Purchases are handled in the bot's private chat.",
+            show_alert=True,
+        )
+        return
+
+    status = await get_protection_status(callback.from_user.id)
+    if status is None:
+        await callback.answer(
+            "Send /start in the bot's private chat before purchasing.",
+            show_alert=True,
+        )
+        return
+
     await begin_purchase_flow(
         callback,
         state,
         PROTECTION_PACKAGE_ID,
-        "Points Protection",
-        PROTECTION_PRICE,
+        f"Points Protection · Rank {min(status['rank'] + 1, 5)}",
+        status["price"],
         None,
     )
 
@@ -176,8 +204,12 @@ async def receive_purchase_signature(message: Message, state: FSMContext):
         expiry_text = expires_at.strftime("%d %b %Y, %H:%M UTC")
         confirmation = (
             "✅ <b>Protection activated</b>\n\n"
-            f"Points Protection expires: <b>{expiry_text}</b>\n"
-            "It protects eligible points at the weekly reset, not PvP losses.\n\n"
+            f"Protection rank: <b>{result['protection_rank']}/5</b>\n"
+            f"Points preserved at weekly reset: "
+            f"<b>{get_protected_percentage(result['protection_rank'])}%</b> "
+            "of points above 10,000.\n"
+            f"Expires: <b>{expiry_text}</b>\n"
+            "PvP losses are not protected.\n\n"
         )
     else:
         confirmation = (

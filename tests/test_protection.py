@@ -2,15 +2,47 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.services.protection_service import (
+    MAX_PROTECTION_PRICE,
+    MAX_PROTECTION_RANK,
     PROTECTION_DAYS,
     PROTECTION_PRICE,
+    get_protected_percentage,
+    get_protection_price,
     protection_is_active,
+    protected_points_after_reset,
 )
 
 
 def test_protection_price_and_duration():
     assert PROTECTION_PRICE == 30_000
     assert PROTECTION_DAYS == 7
+
+
+def test_protection_rank_increases_preserved_share_and_price_with_caps():
+    assert MAX_PROTECTION_RANK == 5
+    assert MAX_PROTECTION_PRICE == 150_000
+    assert [
+        get_protected_percentage(rank) for rank in range(1, 6)
+    ] == [20, 40, 60, 80, 100]
+    assert [
+        get_protection_price(rank) for rank in range(5)
+    ] == [30_000, 60_000, 90_000, 120_000, 150_000]
+    assert get_protection_price(5) == 150_000
+
+
+def test_weekly_reset_preserves_rank_share_above_starting_balance():
+    points = 60_000
+
+    assert protected_points_after_reset(points, 1) == 20_000
+    assert protected_points_after_reset(points, 2) == 30_000
+    assert protected_points_after_reset(points, 3) == 40_000
+    assert protected_points_after_reset(points, 4) == 50_000
+    assert protected_points_after_reset(points, 5) == 60_000
+
+
+def test_weekly_reset_does_not_raise_protected_balance_to_starting_balance():
+    assert protected_points_after_reset(8_000, 3) == 8_000
+    assert protected_points_after_reset(10_000, 3) == 10_000
 
 
 def test_protection_is_active_before_expiry():

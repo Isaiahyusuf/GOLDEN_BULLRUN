@@ -62,6 +62,15 @@ async def _initialize_schema():
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+            "protection_rank INTEGER NOT NULL DEFAULT 0"
+        ))
+        await conn.execute(text(
+            "UPDATE users SET protection_rank = 5 "
+            "WHERE protection_rank = 0 "
+            "AND protection_expires_at > CURRENT_TIMESTAMP"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
             "purchased_credits INTEGER NOT NULL DEFAULT 0"
         ))
         await conn.execute(text(
