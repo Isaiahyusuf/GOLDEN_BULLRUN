@@ -1,0 +1,82 @@
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+
+def main_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⚔️ PLAY NOW", callback_data="menu:play"),
+                InlineKeyboardButton(text="👤 PROFILE", callback_data="menu:profile"),
+            ],
+            [
+                InlineKeyboardButton(text="🎯 MISSIONS", callback_data="menu:missions"),
+                InlineKeyboardButton(text="🏆 LEADERBOARD", callback_data="menu:leaderboard"),
+            ],
+            [
+                InlineKeyboardButton(text="🥊 PVP ARENA", callback_data="menu:duel"),
+            ],
+            [
+                InlineKeyboardButton(text="🪙 POINTS SHOP", callback_data="menu:shop"),
+                InlineKeyboardButton(text="💎 REWARDS", callback_data="menu:rewards"),
+            ],
+            [
+                InlineKeyboardButton(text="🛡️ POINTS PROTECTION", callback_data="menu:protect"),
+            ],
+            [
+                InlineKeyboardButton(text="📜 HOW TO PLAY", callback_data="menu:help"),
+            ],
+        ]
+    )
+
+
+def back_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")]
+        ]
+    )
+
+
+def shop_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⚡ Starter · 5,000 $TRUMPTY", callback_data="buy:1")],
+            [InlineKeyboardButton(text="⚔️ Warrior · 10,000 $TRUMPTY", callback_data="buy:2")],
+            [InlineKeyboardButton(text="🛡️ Champion · 15,000 $TRUMPTY", callback_data="buy:3")],
+            [InlineKeyboardButton(text="👑 Royal · 20,000 $TRUMPTY", callback_data="buy:4")],
+            [InlineKeyboardButton(text="💎 Legend · 25,000 $TRUMPTY", callback_data="buy:5")],
+            [InlineKeyboardButton(text="🛡️ Points Protection · 30,000 $TRUMPTY", callback_data="menu:protect")],
+            [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")],
+        ]
+    )
+
+
+def private_shop_link():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🪙 OPEN PRIVATE SHOP",
+                url="https://t.me/TrumptyDumptybot?start=shop",
+            )]
+        ]
+    )
+
+
+def private_protection_link():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🛡️ VIEW POINTS PROTECTION",
+                url="https://t.me/TrumptyDumptybot?start=protect",
+            )]
+        ]
+    )
+
+
+def payment_unavailable_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ BACK TO SHOP", callback_data="menu:shop")],
+            [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")],
+        ]
+    )
