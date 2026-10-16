@@ -86,6 +86,10 @@ async def _initialize_schema():
         ))
         await conn.execute(text(
             "ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS "
+            "raid_admin_reminder_message_id BIGINT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE telegram_groups ADD COLUMN IF NOT EXISTS "
             "protection_reminder_week VARCHAR(32)"
         ))
         await conn.execute(text(

@@ -51,9 +51,27 @@ def fake_session_context():
     return context
 
 
+def fake_group_transaction_context(group):
+    session = MagicMock()
+    session.scalar = AsyncMock(return_value=group)
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock(return_value=None)
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    session.begin = MagicMock(return_value=transaction)
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=session)
+    context.__aexit__ = AsyncMock(return_value=False)
+    return context
+
+
 def test_raid_admin_reminder_mentions_group_admins_only_if_no_quiz_active():
     async def run():
-        context = fake_session_context()
+        group = SimpleNamespace(
+            chat_id=GROUP_ID,
+            active=True,
+            raid_admin_reminder_message_id=None,
+        )
+        context = fake_group_transaction_context(group)
         bot = MagicMock()
         bot.get_chat_administrators = AsyncMock(
             return_value=[
@@ -75,11 +93,18 @@ def test_raid_admin_reminder_mentions_group_admins_only_if_no_quiz_active():
                 ),
             ]
         )
-        bot.send_message = AsyncMock()
+        bot.send_message = AsyncMock(
+            return_value=SimpleNamespace(message_id=501)
+        )
+        bot.delete_message = AsyncMock()
         with (
             patch(
                 "app.services.group_scheduled_posts.get_active_campaign",
                 new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "app.services.group_scheduled_posts._active_group_ids",
+                new=AsyncMock(return_value=[GROUP_ID]),
             ),
             patch(
                 "app.services.group_scheduled_posts.SessionLocal",
@@ -100,6 +125,69 @@ def test_raid_admin_reminder_mentions_group_admins_only_if_no_quiz_active():
         assert "tg://user?id=103" not in args[1]
         assert "/setraid" in args[1]
         assert kwargs["parse_mode"] == "HTML"
+        assert group.raid_admin_reminder_message_id == 501
+        bot.delete_message.assert_not_awaited()
+
+    asyncio.run(run())
+
+
+def test_new_raid_admin_reminder_replaces_the_previous_post():
+    async def run():
+        group = SimpleNamespace(
+            chat_id=GROUP_ID,
+            active=True,
+            raid_admin_reminder_message_id=500,
+        )
+        context = fake_group_transaction_context(group)
+        bot = MagicMock()
+        bot.get_chat_administrators = AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    user=SimpleNamespace(
+                        id=101,
+                        is_bot=False,
+                        full_name="Group Admin",
+                    ),
+                    status=ChatMemberStatus.ADMINISTRATOR,
+                )
+            ]
+        )
+        events = []
+
+        async def send_message(*args, **kwargs):
+            events.append(("send", args[0]))
+            return SimpleNamespace(message_id=501)
+
+        async def delete_message(chat_id, message_id):
+            events.append(("delete", chat_id, message_id))
+
+        bot.send_message = AsyncMock(side_effect=send_message)
+        bot.delete_message = AsyncMock(side_effect=delete_message)
+
+        with (
+            patch(
+                "app.services.group_scheduled_posts.get_active_campaign",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "app.services.group_scheduled_posts._active_group_ids",
+                new=AsyncMock(return_value=[GROUP_ID]),
+            ),
+            patch(
+                "app.services.group_scheduled_posts.SessionLocal",
+                return_value=context,
+            ),
+        ):
+            sent = await group_scheduled_posts.remind_group_admins_to_start_raids(
+                bot
+            )
+
+        assert sent == 1
+        assert events == [
+            ("send", GROUP_ID),
+            ("delete", GROUP_ID, 500),
+        ]
+        assert group.raid_admin_reminder_message_id == 501
 
     asyncio.run(run())
 

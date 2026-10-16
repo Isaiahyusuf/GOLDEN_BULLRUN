@@ -89,12 +89,45 @@ async def remind_group_admins_to_start_raids(bot: Bot) -> int:
             continue
 
         try:
-            await bot.send_message(
-                chat_id,
-                f"{', '.join(mentions)}\n\n{RAID_REMINDER_TEXT}",
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-            )
+            async with SessionLocal() as session:
+                async with session.begin():
+                    group = await session.scalar(
+                        select(TelegramGroup)
+                        .where(
+                            TelegramGroup.chat_id == chat_id,
+                            TelegramGroup.active.is_(True),
+                        )
+                        .with_for_update()
+                    )
+                    if group is None:
+                        continue
+
+                    sent_message = await bot.send_message(
+                        chat_id,
+                        f"{', '.join(mentions)}\n\n{RAID_REMINDER_TEXT}",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    )
+                    previous_message_id = (
+                        group.raid_admin_reminder_message_id
+                    )
+                    if previous_message_id is not None:
+                        try:
+                            await bot.delete_message(
+                                chat_id,
+                                previous_message_id,
+                            )
+                        except TelegramAPIError:
+                            logging.exception(
+                                "Could not delete previous raid-admin "
+                                "reminder %s in group %s",
+                                previous_message_id,
+                                chat_id,
+                            )
+
+                    group.raid_admin_reminder_message_id = (
+                        sent_message.message_id
+                    )
             reminders_sent += 1
         except TelegramAPIError:
             logging.exception(
