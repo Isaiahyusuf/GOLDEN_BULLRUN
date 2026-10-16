@@ -1,4 +1,6 @@
 import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from aiogram.types import BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats
 
@@ -60,6 +62,49 @@ def test_protection_link_opens_private_protection_purchase_flow():
     assert button.text == "🛡️ BUY / RENEW PROTECTION"
     assert button.url == "https://t.me/Trumpty_dumptybot?start=protect"
     assert shop_button.url == "https://t.me/Trumpty_dumptybot?start=shop"
+
+
+def test_leaderboard_uses_real_line_breaks_and_consistent_player_blocks():
+    async def run():
+        callback = SimpleNamespace(
+            data="menu:leaderboard",
+            message=SimpleNamespace(
+                chat=SimpleNamespace(type="private"),
+                edit_text=AsyncMock(),
+            ),
+            from_user=SimpleNamespace(id=101),
+            answer=AsyncMock(),
+        )
+        players = [
+            {
+                "rank": 1,
+                "name": "Champion",
+                "username": "champion",
+                "points": 10_725,
+            },
+            {
+                "rank": 2,
+                "name": "Runner Up",
+                "username": "runnerup",
+                "points": 10_000,
+            },
+        ]
+
+        with patch.object(
+            start,
+            "get_leaderboard",
+            new=AsyncMock(return_value=players),
+        ):
+            await start.menu_callback(callback)
+
+        text = callback.message.edit_text.await_args.args[0]
+        assert "\\n" not in text
+        assert "🥇 <b>Champion (@champion)</b>\n   💰 <b>10,725</b> points" in text
+        assert "🥈 <b>Runner Up (@runnerup)</b>\n   💰 <b>10,000</b> points" in text
+        assert text.index("Champion") < text.index("Runner Up")
+        assert "🏅 Rankings use competitive points only." in text
+
+    asyncio.run(run())
 
 
 def test_duel_section_explains_group_pvp():

@@ -492,7 +492,7 @@ async def menu_callback(callback: CallbackQuery):
 
         if not players:
             leaderboard_text = (
-                "🏆 <b>HALL OF CHAMPIONS</b>\\n\\n"
+                "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
                 "No players are registered yet. Send /start to join."
             )
         else:
@@ -503,6 +503,7 @@ async def menu_callback(callback: CallbackQuery):
                 "Top players by competitive points:",
                 "",
             ]
+            entries = []
 
             for player in players:
                 rank = player["rank"]
@@ -513,18 +514,19 @@ async def menu_callback(callback: CallbackQuery):
                 else:
                     display_name = name
 
-                lines.append(
-                    f"{marker} <b>{display_name}</b>\\n"
-                    f"   💰 {player['points']:,} points"
+                entries.append(
+                    f"{marker} <b>{display_name}</b>\n"
+                    f"   💰 <b>{player['points']:,}</b> points"
                 )
 
-            lines.extend([
-                "",
-                "━━━━━━━━━━━━━━━━━━",
-                "🏅 Rankings use competitive points only.",
-                "🪙 Purchased credits do not increase your rank.",
-            ])
-            leaderboard_text = "\\n".join(lines)
+            leaderboard_text = (
+                "\n".join(lines)
+                + "\n\n"
+                + "\n\n".join(entries)
+                + "\n\n━━━━━━━━━━━━━━━━━━\n"
+                "🏅 Rankings use competitive points only.\n"
+                "🪙 Purchased credits do not increase your rank."
+            )
 
         await callback.message.edit_text(
             leaderboard_text,
