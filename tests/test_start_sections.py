@@ -14,7 +14,9 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     assert "<code>/duel @username wager</code>" in start.SECTIONS["help"]
     assert "any group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
-    assert "Missions and weekly token reward payouts are not available yet." in (
+    assert "X post quiz" in start.SECTIONS["help"]
+    assert "No X engagement is required" in start.SECTIONS["help"]
+    assert "Weekly token reward payouts are not available yet." in (
         start.SECTIONS["help"]
     )
 

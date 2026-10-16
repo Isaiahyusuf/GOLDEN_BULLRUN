@@ -80,6 +80,17 @@ def private_protection_link():
     )
 
 
+def private_game_link(start_arg: str = "play"):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="⚔️ PLAY IN PRIVATE CHAT",
+                url=f"https://t.me/TrumptyDumptybot?start={start_arg}",
+            )]
+        ]
+    )
+
+
 def protection_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[

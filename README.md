@@ -47,6 +47,23 @@ python -m app.main
 
 Do not expose `.env`, bot tokens, database credentials, or RPC credentials.
 
+## X raid missions
+
+X missions link to an X post and ask a question about it. Players answer the
+quiz in the bot's private chat; a correct answer awards 200 competitive points
+once per campaign, with up to three attempts. Points are awarded for the quiz
+only; liking, reposting, replying to, or following an X account is not required.
+
+An admin starts a quiz in the bot's private chat with:
+
+```text
+/setraid https://x.com/name/status/POST_ID | Question about the post? | correct answer
+```
+
+Separate the post URL, question, and answer with `|`. The answer is matched
+without case or extra-whitespace differences. Use `/stopraid` to end the active
+quiz. No X app credentials, account connection, or API verification is needed.
+
 ## Payment and reward safety
 
 - Live payments must remain disabled until payment verification is reviewed.

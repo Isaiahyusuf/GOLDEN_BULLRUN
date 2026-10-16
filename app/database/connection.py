@@ -58,6 +58,7 @@ async def _initialize_schema():
     from app.models.group import TelegramGroup
     from app.models.reward import WeeklyRewardPool, WeeklyRewardPayout
     from app.models.daily_reward import DailyActivity, DailyRewardSettlement
+    from app.models.x_raid import XRaidCampaign, XRaidClaim
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -120,6 +121,23 @@ async def _initialize_schema():
             "ALTER TABLE weekly_reward_pools "
             "ADD COLUMN IF NOT EXISTS leaderboard_snapshot "
             "JSON NOT NULL DEFAULT '[]'::json"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "ix_x_raid_campaigns_one_active ON x_raid_campaigns (active) "
+            "WHERE active"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE x_raid_campaigns ADD COLUMN IF NOT EXISTS "
+            "quiz_question TEXT NOT NULL DEFAULT ''"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE x_raid_campaigns ADD COLUMN IF NOT EXISTS "
+            "quiz_answer_hash VARCHAR(64) NOT NULL DEFAULT ''"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE x_raid_claims ADD COLUMN IF NOT EXISTS "
+            "attempts INTEGER NOT NULL DEFAULT 0"
         ))
 
 

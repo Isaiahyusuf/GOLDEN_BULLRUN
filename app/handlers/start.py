@@ -11,6 +11,7 @@ from app.keyboards.main_menu import (
     shop_menu,
     private_shop_link,
     private_protection_link,
+    private_game_link,
     protection_menu,
 )
 from app.services.points_service import register_player, get_player
@@ -24,7 +25,7 @@ WELCOME_TEXT = (
     "👑 <b>TRUMPTY ROYALE</b>\n"
     "<i>The battle for the throne starts here.</i>\n\n"
     "💰 Build your competitive points. Challenge rivals. Climb the rankings.\n"
-    "🎯 Missions and reward payouts are not available yet.\n\n"
+    "🎯 Join X post quizzes and earn points for correct answers.\n\n"
     "━━━━━━━━━━━━━━━━━━\n"
     "⚡ <b>Your kingdom. Your strategy. Your crown.</b>\n\n"
     "👇 Choose your next move."
@@ -39,7 +40,9 @@ SECTIONS = {
         "tracked separately and do not increase your leaderboard rank.\n"
         "🛡️ Points Protection has permanent progression ranks and can preserve "
         "part of your points above the 10,000 baseline at a weekly reset.\n"
-        "🥊 Duels use points and are limited to the configured official group.\n\n"
+        "🥊 Duels use points and are limited to the configured official group.\n"
+        "𝕏 X post quizzes award competitive points for correct answers in the "
+        "bot. No X engagement is required.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
         "UTC day, the top five earn 500, 350, 250, 150, or 100 points.\n\n"
         "Payments are verified on Solana. Never send a seed phrase or private key."
@@ -48,12 +51,13 @@ SECTIONS = {
         "⚔️ <b>ROYALE ARENA</b>\n\n"
         "Build your competitive points balance and prepare to challenge rivals.\n\n"
         "🥊 PvP is available only in the configured official Telegram group.\n"
-        "🎯 Mission rewards are not claimable yet."
+        "𝕏 Open Missions to read an active X post and answer its quiz for points."
     ),
     "missions": (
-        "🎯 <b>MISSION CONTROL</b>\n\n"
-        "📡 Community raids\n🧠 Project quizzes\n🔥 Daily challenges\n\n"
-        "Mission rewards will become claimable when the mission system is enabled."
+        "🎯 <b>X RAID MISSIONS</b>\n\n"
+        "Open this section in the bot's private chat to view an X post quiz. "
+        "Answer correctly in the bot to earn 200 competitive points; no X "
+        "engagement is required."
     ),
     "leaderboard": (
         "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
@@ -89,6 +93,8 @@ SECTIONS = {
         "in its official group.\n\n"
         "Only message counts and timestamps are stored, not message text. "
         "Purchased credits do not count as competitive points.\n\n"
+        "X post quizzes award 200 points for one correct answer per campaign. "
+        "No likes, reposts, replies, or follows are required. "
         "Weekly token reward payouts are not available yet."
     ),
     "help": (
@@ -103,15 +109,19 @@ SECTIONS = {
         "Messages count once every 30 seconds, up to 20 per day. Completed "
         "duels also add activity score; both players earn +25 points and the "
         "winner gets +50 extra, for up to 5 duels per day.\n"
-        "4. <b>Play PvP:</b> in the configured official group, challenge with "
+        "4. <b>X post quiz:</b> open Missions, read the linked post, then answer "
+        "the quiz in the bot. A correct answer earns 200 points once per "
+        "campaign; you have up to 3 attempts. No X engagement is required.\n"
+        "5. <b>Play PvP:</b> in the configured official group, challenge with "
         "<code>/duel @username wager</code>. Both players must be registered. "
         "Use the duel buttons to choose ATTACK or DEFEND each round. PvP needs "
         "an official group configured by the bot.\n"
-        "5. <b>Protect points:</b> view Points Protection for your rank, price, "
+        "6. <b>Protect points:</b> view Points Protection for your rank, price, "
         "expiry, and weekly-reset protection. It never protects PvP losses.\n"
-        "6. <b>Shop privately:</b> open the shop only in the bot's private chat. "
+        "7. <b>Shop privately:</b> open the shop only in the bot's private chat. "
         "Payments are checked on Solana before credits or protection are granted.\n\n"
-        "Missions and weekly token reward payouts are not available yet."
+        "Weekly token reward payouts are not available yet. X post quizzes "
+        "award 200 points for a correct answer, once per campaign."
     ),
 }
 
@@ -226,6 +236,17 @@ async def start_command(message: Message):
     args = (message.text or "").split(maxsplit=1)
     start_arg = args[1].strip().lower() if len(args) > 1 else ""
 
+    if message.chat.type != "private":
+        await message.answer(
+            "👑 Ready to play TRUMPTY ROYALE?\n\n"
+            "Open the bot privately to register, view your balance, join X raids, "
+            "and use your game controls.",
+            reply_markup=private_game_link(
+                "missions" if start_arg == "missions" else "play"
+            ),
+        )
+        return
+
     player = await register_player(message.from_user)
 
     if start_arg == "shop":
@@ -240,6 +261,12 @@ async def start_command(message: Message):
         await send_protection_screen(message, message.from_user.id)
         return
 
+    if start_arg == "missions":
+        from app.handlers.raids import send_raid_screen
+
+        await send_raid_screen(message, message.from_user.id)
+        return
+
     await message.answer(
         f"👑 <b>Welcome to TRUMPTY ROYALE, {player['name']}</b>\n\n"
         f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
@@ -251,6 +278,13 @@ async def start_command(message: Message):
 
 @router.message(Command("menu"))
 async def menu_command(message: Message):
+    if message.chat.type != "private":
+        await message.answer(
+            "👑 Ready to play TRUMPTY ROYALE? Open the bot privately to "
+            "register and access your game controls.",
+            reply_markup=private_game_link(),
+        )
+        return
     await show_home(message)
 
 
@@ -323,10 +357,28 @@ async def menu_callback(callback: CallbackQuery):
         await callback.answer()
         return
 
-    if section == "home":
-        await callback.message.edit_text(
-            WELCOME_TEXT, reply_markup=main_menu(), parse_mode="HTML"
+    if section in {"play", "missions"} and chat_type != "private":
+        await callback.message.answer(
+            "👑 Ready to play? Open TRUMPTY ROYALE privately to register, "
+            "check your balance, and join the active raids.",
+            reply_markup=private_game_link(
+                "missions" if section == "missions" else "play"
+            ),
         )
+        await callback.answer()
+        return
+
+    if section == "home":
+        if chat_type != "private":
+            await callback.message.edit_text(
+                "👑 Ready to play TRUMPTY ROYALE? Open the bot privately to "
+                "register and access your game controls.",
+                reply_markup=private_game_link(),
+            )
+        else:
+            await callback.message.edit_text(
+                WELCOME_TEXT, reply_markup=main_menu(), parse_mode="HTML"
+            )
     elif section == "profile":
         player = await get_player(callback.from_user.id)
         if player is None:
@@ -356,6 +408,14 @@ async def menu_callback(callback: CallbackQuery):
             )
             return
         await send_protection_screen(
+            callback.message,
+            callback.from_user.id,
+            edit=True,
+        )
+    elif section == "missions":
+        from app.handlers.raids import send_raid_screen
+
+        await send_raid_screen(
             callback.message,
             callback.from_user.id,
             edit=True,

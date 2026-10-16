@@ -11,6 +11,7 @@ from app.handlers.payments import router as payments_router
 from app.handlers.start import router
 from app.handlers.duels import router as duels_router
 from app.handlers.groups import router as groups_router
+from app.handlers.raids import router as raids_router
 from app.models.group import TelegramGroup
 from app.services.duel_service import expire_stale_duels
 from app.services.daily_rewards import settle_completed_daily_rewards
@@ -155,6 +156,7 @@ async def main():
         bot = Bot(token=settings.bot_token)
         dp = Dispatcher()
         dp.include_router(payments_router)
+        dp.include_router(raids_router)
         dp.include_router(router)
         dp.include_router(groups_router)
         dp.include_router(duels_router)
