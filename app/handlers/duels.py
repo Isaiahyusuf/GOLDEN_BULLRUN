@@ -85,6 +85,25 @@ def battle_keyboard(duel_id: int, turn_number: int):
     )
 
 
+def challenge_text(
+    duel_id: int,
+    challenger_name: str,
+    opponent_name: str,
+    wager: int,
+) -> str:
+    return (
+        f"⚔️ TRUMPTY ROYALE — DUEL #{duel_id}\n\n"
+        "DUEL CHALLENGE\n\n"
+        f"Challenger: {challenger_name}\n"
+        f"Opponent: {opponent_name}\n"
+        f"Stake: {wager:,} points each\n"
+        "Battle mode: Turn-based (100 HP, 20 damage per attack; one guard "
+        "reduces a hit by 10)\n"
+        "Expires: 60 seconds\n\n"
+        f"Only {opponent_name} can accept or decline."
+    )
+
+
 async def player_name(player_id: int) -> str:
     async with SessionLocal() as session:
         player = await session.get(User, player_id)
@@ -193,14 +212,12 @@ async def start_duel(message: Message, bot: Bot):
     )
     opponent_name = f"@{opponent.username}" if opponent.username else opponent.full_name
     await message.answer(
-        "⚔️ TRUMPTY ROYALE — DUEL CHALLENGE\n\n"
-        f"Challenger: {challenger_name}\n"
-        f"Opponent: {opponent_name}\n"
-        f"Stake: {wager:,} points each\n"
-        "Battle mode: Turn-based (100 HP, 20 damage per attack; one guard "
-        "reduces a hit by 10)\n"
-        "Expires: 60 seconds\n\n"
-        f"Only {opponent_name} can accept or decline.",
+        challenge_text(
+            duel_id,
+            challenger_name,
+            opponent_name,
+            wager,
+        ),
         reply_markup=challenge_keyboard(duel_id),
     )
 

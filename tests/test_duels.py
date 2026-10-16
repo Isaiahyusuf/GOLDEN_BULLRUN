@@ -16,6 +16,7 @@ from app.models.duel import Duel
 from app.models.group import TelegramGroup
 from app.models.transaction import PointTransaction
 from app.models.user import User
+from app.handlers.duels import challenge_text
 from app.services.duel_service import (
     DuelError,
     accept_duel,
@@ -44,6 +45,15 @@ def test_pvp_is_the_only_duel_command():
             await bot.session.close()
 
     asyncio.run(run())
+
+
+def test_challenge_post_displays_assigned_duel_number():
+    text = challenge_text(42, "@challenger", "@opponent", 500)
+
+    assert "DUEL #42" in text
+    assert "Challenger: @challenger" in text
+    assert "Opponent: @opponent" in text
+    assert "Stake: 500 points each" in text
 
 
 def test_unregistered_opponent_gets_start_registration_button():
