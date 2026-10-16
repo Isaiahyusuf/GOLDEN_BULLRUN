@@ -89,8 +89,18 @@ async def start_duel(message: Message):
 
     if opponent is None:
         await message.answer(
-            "That player isn't registered yet. They must send /start in a group "
-            "or in the bot before you can challenge them."
+            "That player isn't registered yet. Ask them to tap Start below to "
+            "register, then you can challenge them.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="🚀 TAP START TO REGISTER",
+                            url="https://t.me/TrumptyDumptybot?start=register",
+                        )
+                    ]
+                ]
+            ),
         )
         return
 

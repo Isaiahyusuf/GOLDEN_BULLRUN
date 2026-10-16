@@ -1,8 +1,10 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram import Bot
+from aiogram.enums import ChatType
 from aiogram.filters import Command
 from sqlalchemy import delete
 
@@ -18,6 +20,7 @@ from app.services.duel_service import (
     expire_stale_duels,
     submit_choice,
 )
+from app.handlers.duels import start_duel
 
 GROUP_ID = -1001234567890
 CHALLENGER_ID = 990001001
@@ -35,6 +38,37 @@ def test_pvp_and_duel_commands_are_both_accepted():
             assert duel.command.startswith("duel")
         finally:
             await bot.session.close()
+
+    asyncio.run(run())
+
+
+def test_unregistered_opponent_gets_start_registration_button():
+    async def run():
+        session = AsyncMock()
+        session.scalar.return_value = None
+        session_context = MagicMock()
+        session_context.__aenter__ = AsyncMock(return_value=session)
+        session_context.__aexit__ = AsyncMock(return_value=False)
+        message = MagicMock()
+        message.chat.type = ChatType.GROUP
+        message.chat.id = GROUP_ID
+        message.from_user.id = CHALLENGER_ID
+        message.text = "/pvp @newplayer 100"
+        message.answer = AsyncMock()
+
+        with patch(
+            "app.handlers.duels.SessionLocal",
+            return_value=session_context,
+        ):
+            await start_duel(message)
+
+        message.answer.assert_awaited_once()
+        text = message.answer.await_args.args[0]
+        keyboard = message.answer.await_args.kwargs["reply_markup"]
+        button = keyboard.inline_keyboard[0][0]
+        assert "tap Start below to register" in text
+        assert button.text == "🚀 TAP START TO REGISTER"
+        assert button.url == "https://t.me/TrumptyDumptybot?start=register"
 
     asyncio.run(run())
 
