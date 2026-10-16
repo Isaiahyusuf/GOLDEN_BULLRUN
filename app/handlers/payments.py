@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -5,12 +7,14 @@ from aiogram.types import CallbackQuery, Message
 
 from app.services.payment_service import (
     PACKAGES,
+    PROTECTION_PACKAGE_ID,
     PaymentServiceError,
     create_purchase_intent,
     submit_purchase_signature,
 )
 from app.services.solana_service import payments_configured
 from app.keyboards.main_menu import payment_unavailable_menu
+from app.services.protection_service import PROTECTION_PRICE
 
 
 router = Router()
@@ -21,8 +25,14 @@ class PurchaseFlow(StatesGroup):
     waiting_for_signature = State()
 
 
-@router.callback_query(F.data.startswith("buy:"))
-async def begin_purchase(callback: CallbackQuery, state: FSMContext):
+async def begin_purchase_flow(
+    callback: CallbackQuery,
+    state: FSMContext,
+    package_id: str,
+    name: str,
+    price: int,
+    credits: int | None,
+):
     if callback.message is None or callback.message.chat.type != "private":
         await callback.answer(
             "Purchases are handled in the bot's private chat.",
@@ -30,6 +40,36 @@ async def begin_purchase(callback: CallbackQuery, state: FSMContext):
         )
         return
 
+    if not payments_configured():
+        await callback.answer(
+            "Checkout is not enabled yet. No payment has been requested.",
+            show_alert=True,
+        )
+        return
+
+    await state.clear()
+    await state.update_data(package_id=package_id)
+    await state.set_state(PurchaseFlow.waiting_for_wallet)
+
+    product_details = (
+        f"Credits: <b>{credits:,}</b>\n\n"
+        if credits
+        else "Protection duration: <b>7 days</b>\n\n"
+    )
+    await callback.message.edit_text(
+        f"🪙 <b>{name}</b>\n\n"
+        f"Price: <b>{price:,} $TRUMPTY</b>\n"
+        f"{product_details}"
+        "Send the public Solana wallet address you will pay from.\n"
+        "Never send a seed phrase or private key.",
+        reply_markup=payment_unavailable_menu(),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("buy:"))
+async def begin_purchase(callback: CallbackQuery, state: FSMContext):
     package_id = callback.data.split(":", 1)[1]
     package = PACKAGES.get(package_id)
 
@@ -37,32 +77,27 @@ async def begin_purchase(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Package not found.", show_alert=True)
         return
 
-    if not payments_configured():
-        await callback.message.edit_text(
-            "🔒 <b>Checkout is not enabled yet.</b>\n\n"
-            "Do not send tokens. Payments will open after the official "
-            "wallet and verification setup have been tested.",
-            reply_markup=payment_unavailable_menu(),
-            parse_mode="HTML",
-        )
-        await callback.answer()
-        return
-
     name, price, credits = package
-    await state.clear()
-    await state.update_data(package_id=package_id)
-    await state.set_state(PurchaseFlow.waiting_for_wallet)
-
-    await callback.message.edit_text(
-        f"🪙 <b>{name}</b>\n\n"
-        f"Price: <b>{price:,} $TRUMPTY</b>\n"
-        f"Credits: <b>{credits:,}</b>\n\n"
-        "Send the public Solana wallet address you will pay from.\n"
-        "Never send a seed phrase or private key.",
-        reply_markup=payment_unavailable_menu(),
-        parse_mode="HTML",
+    await begin_purchase_flow(
+        callback,
+        state,
+        package_id,
+        name,
+        price,
+        credits,
     )
-    await callback.answer()
+
+
+@router.callback_query(F.data == "protect:buy")
+async def begin_protection_purchase(callback: CallbackQuery, state: FSMContext):
+    await begin_purchase_flow(
+        callback,
+        state,
+        PROTECTION_PACKAGE_ID,
+        "Points Protection",
+        PROTECTION_PRICE,
+        None,
+    )
 
 
 @router.message(PurchaseFlow.waiting_for_wallet, F.chat.type == "private")
@@ -87,11 +122,16 @@ async def receive_buyer_wallet(message: Message, state: FSMContext):
     await state.update_data(purchase_reference=purchase["reference"])
     await state.set_state(PurchaseFlow.waiting_for_signature)
 
+    credits_text = (
+        f"Credits after verification: <b>{purchase['credits']:,}</b>\n\n"
+        if purchase["credits"]
+        else "Protection after verification: <b>7 days</b>\n\n"
+    )
     await message.answer(
         "🧾 <b>Purchase created</b>\n\n"
         f"Package: <b>{purchase['package_name']}</b>\n"
         f"Amount: <b>{purchase['token_amount']:,} $TRUMPTY</b>\n"
-        f"Credits after verification: <b>{purchase['credits']:,}</b>\n\n"
+        f"{credits_text}"
         f"Official receiving wallet:\n<code>{purchase['recipient']}</code>\n\n"
         f"Purchase reference:\n<code>{purchase['reference']}</code>\n\n"
         "Only send the exact amount from the wallet you registered above. "
@@ -129,10 +169,24 @@ async def receive_purchase_signature(message: Message, state: FSMContext):
         return
 
     await state.clear()
+    if result["package_id"] == PROTECTION_PACKAGE_ID:
+        expires_at = result["protection_expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expiry_text = expires_at.strftime("%d %b %Y, %H:%M UTC")
+        confirmation = (
+            "✅ <b>Protection activated</b>\n\n"
+            f"Points Protection expires: <b>{expiry_text}</b>\n"
+            "It protects eligible points at the weekly reset, not PvP losses.\n\n"
+        )
+    else:
+        confirmation = (
+            "✅ <b>Payment verified</b>\n\n"
+            f"Credits added: <b>{result['credits']:,}</b>\n"
+            f"Purchased credits balance: <b>{result['purchased_credits']:,}</b>\n\n"
+        )
+
     await message.answer(
-        "✅ <b>Payment verified</b>\n\n"
-        f"Credits added: <b>{result['credits']:,}</b>\n"
-        f"Purchased credits balance: <b>{result['purchased_credits']:,}</b>\n\n"
-        f"Transaction:\n<code>{result['signature']}</code>",
+        confirmation + f"Transaction:\n<code>{result['signature']}</code>",
         parse_mode="HTML",
     )

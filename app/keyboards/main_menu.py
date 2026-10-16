@@ -73,6 +73,18 @@ def private_protection_link():
     )
 
 
+def protection_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🛡️ BUY / RENEW PROTECTION",
+                callback_data="protect:buy",
+            )],
+            [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")],
+        ]
+    )
+
+
 def payment_unavailable_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[

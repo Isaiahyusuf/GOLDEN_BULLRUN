@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -7,6 +7,7 @@ from solders.pubkey import Pubkey
 from app.config import settings
 from app.database.connection import SessionLocal
 from app.models.payment import Payment
+from app.models.transaction import PointTransaction
 from app.models.user import User
 from app.services.solana_service import (
     PaymentVerificationError,
@@ -14,6 +15,7 @@ from app.services.solana_service import (
     payments_configured,
     verify_token_payment,
 )
+from app.services.protection_service import PROTECTION_DAYS, PROTECTION_PRICE
 
 
 PACKAGES = {
@@ -23,6 +25,17 @@ PACKAGES = {
     "4": ("Royal Pack", 20_000, 52_000),
     "5": ("Legend Pack", 25_000, 70_000),
 }
+PROTECTION_PACKAGE_ID = "protection"
+
+
+def extend_protection(user: User, now: datetime) -> datetime:
+    expiry = user.protection_expires_at
+    if expiry is not None and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+
+    base = expiry if expiry is not None and expiry > now else now
+    user.protection_expires_at = base + timedelta(days=PROTECTION_DAYS)
+    return user.protection_expires_at
 
 
 class PaymentServiceError(Exception):
@@ -52,11 +65,19 @@ async def create_purchase_intent(
         )
 
     package = PACKAGES.get(package_id)
-    if package is None:
+    is_protection = package_id == PROTECTION_PACKAGE_ID
+    if package is None and not is_protection:
         raise PaymentServiceError("That package does not exist.")
 
     buyer_wallet = validate_buyer_wallet(buyer_wallet)
-    name, price, credits = package
+    if is_protection:
+        name, price, credits = (
+            "Points Protection",
+            PROTECTION_PRICE,
+            0,
+        )
+    else:
+        name, price, credits = package
 
     async with SessionLocal() as session:
         async with session.begin():
@@ -159,7 +180,19 @@ async def submit_purchase_signature(
                 payment.verified_at = now
                 payment.received_at = received_at
                 payment.credited_at = now
-                user.purchased_credits += payment.credits
+
+                if payment.package_id == PROTECTION_PACKAGE_ID:
+                    expires_at = extend_protection(user, now)
+                    session.add(
+                        PointTransaction(
+                            telegram_id=telegram_id,
+                            amount=0,
+                            reason=f"protection_purchase:{payment.purchase_reference}",
+                        )
+                    )
+                else:
+                    user.purchased_credits += payment.credits
+                    expires_at = None
 
                 result = {
                     "package_id": payment.package_id,
@@ -167,6 +200,7 @@ async def submit_purchase_signature(
                     "purchased_credits": user.purchased_credits,
                     "signature": verification["signature"],
                     "received_at": received_at,
+                    "protection_expires_at": expires_at,
                 }
 
         return result

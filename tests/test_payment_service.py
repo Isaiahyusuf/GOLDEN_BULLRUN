@@ -3,6 +3,99 @@ import pytest
 from app.services import payment_service
 
 
+def test_protection_package_renews_for_seven_days():
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+    user = SimpleNamespace(
+        protection_expires_at=now + timedelta(days=2)
+    )
+
+    expiry = payment_service.extend_protection(user, now)
+
+    assert expiry == now + timedelta(days=9)
+    assert user.protection_expires_at == expiry
+
+
+@pytest.mark.asyncio
+async def test_verified_protection_purchase_activates_in_same_transaction(
+    monkeypatch,
+):
+    from datetime import datetime, timedelta, timezone
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    fixed_now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now if tz else fixed_now.replace(tzinfo=None)
+
+    payment = SimpleNamespace(
+        purchase_reference="protection-purchase-reference",
+        telegram_id=12345,
+        status="pending",
+        signature=None,
+        buyer_wallet="Vote111111111111111111111111111111111111111",
+        token_amount=Decimal("30000"),
+        package_id=payment_service.PROTECTION_PACKAGE_ID,
+        credits=0,
+        verified_at=None,
+        received_at=None,
+        credited_at=None,
+    )
+    user = SimpleNamespace(
+        protection_expires_at=fixed_now + timedelta(days=2),
+        purchased_credits=500,
+    )
+    session = MagicMock()
+    session.scalar = AsyncMock(side_effect=[payment, None, user])
+    session.add = MagicMock()
+
+    transaction_context = MagicMock()
+    transaction_context.__aenter__ = AsyncMock(return_value=session)
+    transaction_context.__aexit__ = AsyncMock(return_value=False)
+    session.begin.return_value = transaction_context
+
+    session_context = MagicMock()
+    session_context.__aenter__ = AsyncMock(return_value=session)
+    session_context.__aexit__ = AsyncMock(return_value=False)
+
+    async def verify(signature, expected_tokens, buyer_wallet):
+        assert signature == "verified-signature"
+        assert expected_tokens == 30_000
+        assert buyer_wallet == payment.buyer_wallet
+        return {
+            "signature": signature,
+            "block_time": 1_700_000_000,
+        }
+
+    monkeypatch.setattr(payment_service, "datetime", FrozenDateTime)
+    monkeypatch.setattr(payment_service, "payments_configured", lambda: True)
+    monkeypatch.setattr(payment_service, "verify_token_payment", verify)
+    monkeypatch.setattr(payment_service, "SessionLocal", lambda: session_context)
+
+    result = await payment_service.submit_purchase_signature(
+        payment.telegram_id,
+        payment.purchase_reference,
+        "verified-signature",
+    )
+
+    assert payment.status == "credited"
+    assert payment.signature == "verified-signature"
+    assert user.protection_expires_at == fixed_now + timedelta(days=9)
+    assert user.purchased_credits == 500
+    assert result["protection_expires_at"] == fixed_now + timedelta(days=9)
+    assert result["credits"] == 0
+    ledger_entry = session.add.call_args.args[0]
+    assert ledger_entry.reason == (
+        "protection_purchase:protection-purchase-reference"
+    )
+
+
 def test_valid_buyer_wallet_is_normalized():
     from solders.pubkey import Pubkey
 

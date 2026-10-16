@@ -11,6 +11,7 @@ from app.keyboards.main_menu import (
     private_shop_link,
     private_protection_link,
     payment_unavailable_menu,
+    protection_menu,
 )
 from app.services.points_service import register_player, get_player
 from app.services.leaderboard_service import get_leaderboard
@@ -131,13 +132,13 @@ async def send_protection_screen(target, telegram_id: int, edit: bool = False):
     if edit:
         await target.edit_text(
             text,
-            reply_markup=payment_unavailable_menu(),
+            reply_markup=protection_menu(),
             parse_mode="HTML",
         )
     else:
         await target.answer(
             text,
-            reply_markup=payment_unavailable_menu(),
+            reply_markup=protection_menu(),
             parse_mode="HTML",
         )
 
