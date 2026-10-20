@@ -1,6 +1,26 @@
+from functools import wraps
+
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.branding import LINKS
+
+CLOSE_CALLBACK = "ui:close"
+
+
+def close_button() -> InlineKeyboardButton:
+    return InlineKeyboardButton(text="✖️ CLOSE", callback_data=CLOSE_CALLBACK)
+
+
+def with_close(builder):
+    """Append a CLOSE button (deletes the bot's message) to a keyboard."""
+
+    @wraps(builder)
+    def wrapper(*args, **kwargs):
+        markup = builder(*args, **kwargs)
+        markup.inline_keyboard[-1].append(close_button())
+        return markup
+
+    return wrapper
 
 
 GROUP_PLAY_LORE = (
@@ -34,6 +54,7 @@ def group_play_post(cycle: int = 0):
     )
 
 
+@with_close
 def main_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -70,6 +91,7 @@ def main_menu():
     )
 
 
+@with_close
 def back_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -78,6 +100,7 @@ def back_menu():
     )
 
 
+@with_close
 def token_menu():
     buttons = [
         InlineKeyboardButton(text=label, url=url) for label, url in LINKS.items()
@@ -89,6 +112,7 @@ def token_menu():
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@with_close
 def shop_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -140,6 +164,7 @@ def x_authorization_menu(authorization_url: str):
     )
 
 
+@with_close
 def protection_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -152,6 +177,7 @@ def protection_menu():
     )
 
 
+@with_close
 def payment_unavailable_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[

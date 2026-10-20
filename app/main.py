@@ -23,6 +23,7 @@ from app.keyboards.main_menu import group_play_post
 from app.models.group import TelegramGroup
 from app.services.duel_service import expire_stale_duels
 from app.services.daily_rewards import settle_completed_daily_rewards
+from app.services.group_cleanup import DeletePreviousGroupPostMiddleware
 from app.services.group_play_posts import replace_group_play_post
 from app.services.group_scheduled_posts import (
     HOW_TO_PLAY_POST_SECONDS,
@@ -291,6 +292,7 @@ async def main():
         await init_db()
 
         bot = Bot(token=settings.bot_token)
+        bot.session.middleware(DeletePreviousGroupPostMiddleware())
         x_config_values = (
             settings.x_api_client_id,
             settings.x_api_redirect_uri,

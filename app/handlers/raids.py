@@ -43,6 +43,7 @@ from app.services.x_oauth_service import (
     x_oauth_configured,
 )
 from app.keyboards.main_menu import (
+    close_button,
     private_x_connect_link,
     x_authorization_menu,
 )
@@ -92,7 +93,7 @@ def raid_keyboard(
         [InlineKeyboardButton(
             text="🏠 MAIN MENU",
             callback_data="menu:home",
-        )]
+        ), close_button()]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

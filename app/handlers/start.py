@@ -2,11 +2,14 @@ from datetime import timezone
 from html import escape
 
 from aiogram import F, Router
+from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
 from app.branding import TAGLINE, TOKEN_TEXT, bull_rank
 from app.keyboards.main_menu import (
+    CLOSE_CALLBACK,
     main_menu,
     back_menu,
     token_menu,
@@ -425,6 +428,40 @@ async def about_command(message: Message):
         reply_markup=back_menu(),
         parse_mode="HTML",
     )
+
+
+@router.callback_query(F.data == CLOSE_CALLBACK)
+async def close_callback(callback: CallbackQuery):
+    message = callback.message
+    if message is None:
+        await callback.answer()
+        return
+
+    if message.chat.type != "private":
+        try:
+            member = await callback.bot.get_chat_member(
+                message.chat.id, callback.from_user.id
+            )
+        except TelegramAPIError:
+            await callback.answer("Could not verify your permissions.", show_alert=True)
+            return
+        if member.status not in {
+            ChatMemberStatus.CREATOR,
+            ChatMemberStatus.ADMINISTRATOR,
+        }:
+            await callback.answer(
+                "Only group admins can close this message.", show_alert=True
+            )
+            return
+
+    try:
+        await message.delete()
+    except TelegramAPIError:
+        try:
+            await message.edit_reply_markup(reply_markup=None)
+        except TelegramAPIError:
+            pass
+    await callback.answer("Closed.")
 
 
 @router.callback_query(F.data.startswith("menu:"))
