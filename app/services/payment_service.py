@@ -116,7 +116,7 @@ async def create_purchase_intent(
             payment = Payment(
                 telegram_id=telegram_id,
                 package_id=package_id,
-                token_mint=settings.trumpty_token_mint,
+                token_mint=settings.gold_token_mint,
                 recipient=settings.payment_wallet_address,
                 buyer_wallet=buyer_wallet,
                 token_amount=Decimal(price),

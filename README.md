@@ -10,7 +10,7 @@ and manually settled weekly rewards.
 
 Rebrand note: only player-facing text changed. Database names, environment
 variables, and internal identifiers (for example `points`, `duels`,
-`trumpty_token_mint`) are unchanged. Wins are derived from settled battles
+`gold_token_mint`, set via `GOLD_TOKEN_MINT`; the old `TRUMPTY_TOKEN_MINT` is still accepted as a fallback) are unchanged. Wins are derived from settled battles
 (`duels.status = 'settled'` and `duels.winner_id`), so no migration is needed.
 
 ## Requirements

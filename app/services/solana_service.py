@@ -37,7 +37,7 @@ def payments_configured() -> bool:
 
     if not all((
         settings.solana_rpc_url,
-        settings.trumpty_token_mint,
+        settings.gold_token_mint,
         settings.payment_wallet_address,
     )):
         return False
@@ -46,7 +46,7 @@ def payments_configured() -> bool:
         return False
 
     try:
-        Pubkey.from_string(settings.trumpty_token_mint)
+        Pubkey.from_string(settings.gold_token_mint)
         Pubkey.from_string(settings.payment_wallet_address)
     except ValueError:
         return False
@@ -210,7 +210,7 @@ async def verify_token_payment(
             "The buyer wallet address is invalid."
         ) from exc
 
-    mint = settings.trumpty_token_mint
+    mint = settings.gold_token_mint
     recipient = settings.payment_wallet_address
 
     pre_balances = meta.get("preTokenBalances") or []
@@ -366,11 +366,11 @@ async def get_trumpty_token_balance():
     if not settings.solana_rpc_url or not settings.solana_rpc_url.startswith("https://"):
         raise TokenBalanceError("A valid HTTPS Solana RPC URL is required.")
 
-    if not settings.trumpty_token_mint or not settings.payment_wallet_address:
+    if not settings.gold_token_mint or not settings.payment_wallet_address:
         raise TokenBalanceError("The token mint and team wallet must be configured.")
 
     try:
-        mint = str(Pubkey.from_string(settings.trumpty_token_mint))
+        mint = str(Pubkey.from_string(settings.gold_token_mint))
         wallet = str(Pubkey.from_string(settings.payment_wallet_address))
     except ValueError as exc:
         raise TokenBalanceError("The configured token mint or wallet is invalid.") from exc

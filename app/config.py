@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +18,10 @@ class Settings(BaseSettings):
 
     payments_enabled: bool = False
     solana_rpc_url: str | None = None
-    trumpty_token_mint: str | None = None
+    gold_token_mint: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GOLD_TOKEN_MINT", "TRUMPTY_TOKEN_MINT"),
+    )
     payment_wallet_address: str | None = None
     x_api_client_id: str | None = None
     x_api_client_secret: str | None = None

@@ -88,7 +88,7 @@ def configured(monkeypatch):
     monkeypatch.setattr(
         settings, "solana_rpc_url", "https://rpc.example.invalid"
     )
-    monkeypatch.setattr(settings, "trumpty_token_mint", MINT)
+    monkeypatch.setattr(settings, "gold_token_mint", MINT)
     monkeypatch.setattr(settings, "payment_wallet_address", RECIPIENT)
 
 
