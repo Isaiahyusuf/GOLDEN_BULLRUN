@@ -44,10 +44,10 @@ GROUP_PLAY_POST_INTERVAL_SECONDS = 600
 BOT_COMMANDS = [
     BotCommand(command="start", description="Register and open the game"),
     BotCommand(command="menu", description="Show game menu"),
-    BotCommand(command="pvp", description="Challenge: /pvp @username 100"),
-    BotCommand(command="profile", description="View your player profile"),
-    BotCommand(command="balance", description="Check your points"),
-    BotCommand(command="missions", description="View and answer the active X quiz"),
+    BotCommand(command="pvp", description="Bull Arena: /pvp @username 100"),
+    BotCommand(command="profile", description="View your Bull Profile"),
+    BotCommand(command="balance", description="Check your Bullrun Points"),
+    BotCommand(command="missions", description="Bull Missions: the active X quiz"),
     BotCommand(command="unlinkx", description="Disconnect your X account"),
     BotCommand(command="group_status", description="Check this group's bot setup"),
     BotCommand(command="enable_announcements", description="Enable group announcements"),
@@ -55,8 +55,9 @@ BOT_COMMANDS = [
     BotCommand(command="setraid", description="Start an X post quiz (admins)"),
     BotCommand(command="stopraid", description="Stop the active X quiz (admins)"),
     BotCommand(command="groups", description="List bot groups (bot admins)"),
+    BotCommand(command="gold", description="$GOLD token, contract and official links"),
     BotCommand(command="help", description="How to play"),
-    BotCommand(command="about", description="About TRUMPTY ROYALE"),
+    BotCommand(command="about", description="About Golden Bullrun"),
     BotCommand(command="cancel", description="Cancel the current quiz answer"),
 ]
 

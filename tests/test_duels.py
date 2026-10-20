@@ -50,10 +50,10 @@ def test_pvp_is_the_only_duel_command():
 def test_challenge_post_displays_assigned_duel_number():
     text = challenge_text(42, "@challenger", "@opponent", 500)
 
-    assert "DUEL #42" in text
+    assert "BATTLE #42" in text
     assert "Challenger: @challenger" in text
     assert "Opponent: @opponent" in text
-    assert "Stake: 500 points each" in text
+    assert "Stake: 500 Bullrun Points each" in text
 
 
 def test_unregistered_opponent_gets_start_registration_button():
@@ -243,7 +243,7 @@ def test_challenge_decline_is_limited_to_opponent_and_does_not_charge_points():
             CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
         )
 
-        with pytest.raises(DuelError, match="Only the challenged player"):
+        with pytest.raises(DuelError, match="Only the challenged Bull"):
             await decline_duel(duel_id, CHALLENGER_ID, GROUP_ID)
 
         result = await decline_duel(duel_id, OPPONENT_ID, GROUP_ID)
@@ -266,7 +266,7 @@ def test_only_opponent_can_accept_and_challenger_stake_is_not_reserved_early():
             CHALLENGER_ID, OPPONENT_ID, 1_000, GROUP_ID
         )
 
-        with pytest.raises(DuelError, match="Only the challenged player"):
+        with pytest.raises(DuelError, match="Only the challenged Bull"):
             await accept_duel(duel_id, CHALLENGER_ID, GROUP_ID)
 
         async with SessionLocal() as session:
@@ -365,7 +365,7 @@ def test_abandoned_accepted_duel_refunds_once():
             assert a.points == 10_000
             assert b.points == 10_000
 
-        with pytest.raises(DuelError, match="enough points for that wager"):
+        with pytest.raises(DuelError, match="enough Bullrun Points for that wager"):
             await create_duel(
                 CHALLENGER_ID, OPPONENT_ID, 20_000, GROUP_ID
             )

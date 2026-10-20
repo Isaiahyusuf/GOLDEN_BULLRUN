@@ -69,7 +69,7 @@ def raid_keyboard(
     if verification_ready:
         rows.append(
             [InlineKeyboardButton(
-                text="🧠 ANSWER RAID QUIZ",
+                text="🧠 ANSWER BULL MISSION",
                 callback_data="raid:answer",
             )]
         )
@@ -147,7 +147,7 @@ async def send_raid_screen(
     campaign = await get_active_campaign()
     if campaign is None:
         text = (
-            "🎯 <b>X RAID MISSIONS</b>\n\n"
+            "🎯 <b>BULL MISSIONS</b>\n\n"
             "No X quiz is active right now.\n\n"
             "A group admin can start one here with:\n"
             "<code>/setraid https://x.com/name/status/POST_ID | "
@@ -159,13 +159,13 @@ async def send_raid_screen(
         linked_x_username = await get_linked_x_username(telegram_id)
         verification_ready = x_oauth_configured()
         text = (
-            "🎯 <b>ACTIVE X POST QUIZ</b>\n\n"
+            "🎯 <b>ACTIVE BULL MISSION</b>\n\n"
             f"Read the <a href=\"{escape(campaign.post_url, quote=True)}\">X post</a>, "
             "then answer the question here in the group or bot.\n\n"
             f"<b>Question:</b> {escape(campaign.quiz_question)}\n\n"
-            f"Correct answer reward: <b>{QUIZ_REWARD_POINTS} points</b> "
+            f"Correct answer reward: <b>{QUIZ_REWARD_POINTS} Bullrun Points</b> "
             f"(one claim per campaign; {MAX_QUIZ_ATTEMPTS} attempts).\n"
-            "To claim points, connect your X account and Like and Repost this "
+            "To claim Bullrun Points, connect your X account and Like and Repost this "
             "post, Reply to it, and Follow its author."
         )
         if linked_x_username:
@@ -263,10 +263,10 @@ async def set_raid_command(message: Message):
         return
 
     await message.answer(
-        "✅ X post quiz is active.\n"
+        "✅ Bull Mission is active.\n"
         f"Post: {campaign.post_url}\n"
         f"Question: {campaign.quiz_question}\n"
-        f"Reward: {QUIZ_REWARD_POINTS} points for a correct answer "
+        f"Reward: {QUIZ_REWARD_POINTS} Bullrun Points for a correct answer "
         f"(up to {MAX_QUIZ_ATTEMPTS} attempts)."
     )
 
@@ -338,7 +338,7 @@ async def begin_quiz_answer(callback: CallbackQuery, state: FSMContext):
     await state.set_state(QuizAnswer.waiting)
     await state.update_data(campaign_id=campaign.id)
     await callback.message.answer(
-        f"<b>Raid quiz</b>\n\n{escape(campaign.quiz_question)}\n\n"
+        f"<b>Bull Mission</b>\n\n{escape(campaign.quiz_question)}\n\n"
         f"Reply to this message with your answer. You have "
         f"{MAX_QUIZ_ATTEMPTS - status['attempts']} attempt(s) left. "
         "Use /cancel to leave.",
@@ -370,7 +370,7 @@ async def connect_x_account(callback: CallbackQuery):
 
     await callback.message.answer(
         "🔗 <b>Connect your X account</b>\n\n"
-        "Authorize TRUMPTY ROYALE to read your liked posts, reposts, "
+        "Authorize Golden Bullrun to read your liked posts, reposts, "
         "replies, follows, and public profile. The bot will never post "
         "or follow on your behalf.",
         reply_markup=x_authorization_menu(authorization_url),
@@ -478,7 +478,7 @@ async def receive_quiz_answer(message: Message, state: FSMContext):
 
     await state.clear()
     if result["status"] == "correct":
-        response = f"✅ Correct! <b>+{result['points_awarded']} points</b> added."
+        response = f"✅ Correct! 🐂 <b>+{result['points_awarded']} Bullrun Points</b> added."
     elif result["status"] == "already_claimed":
         response = "You already claimed this quiz reward."
     elif result["status"] == "locked":

@@ -229,7 +229,7 @@ def test_hourly_how_to_play_posts_detailed_instructions_to_active_groups():
         assert sent == 1
         args, kwargs = bot.send_message.await_args
         assert args[0] == GROUP_ID
-        assert "TRUMPTY ROYALE — HOW TO PLAY" in args[1]
+        assert "GOLDEN BULLRUN — HOW TO PLAY" in args[1]
         assert "/pvp @username amount" in args[1]
         assert "/missions" in args[1]
         assert "/setraid" in args[1]

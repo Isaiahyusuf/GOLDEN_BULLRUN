@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.database.connection import SessionLocal
+from app.models.duel import Duel
 from app.models.user import User
 
 
@@ -20,6 +21,16 @@ async def get_leaderboard(limit=10):
             )
         ).all()
 
+        win_rows = await session.execute(
+            select(Duel.winner_id, func.count(Duel.id))
+            .where(
+                Duel.status == "settled",
+                Duel.winner_id.in_([player.telegram_id for player in players]),
+            )
+            .group_by(Duel.winner_id)
+        )
+        wins = {winner_id: count for winner_id, count in win_rows.all()}
+
         return [
             {
                 "rank": index,
@@ -27,6 +38,7 @@ async def get_leaderboard(limit=10):
                 "name": player.full_name,
                 "username": player.username,
                 "points": player.points,
+                "wins": wins.get(player.telegram_id, 0),
             }
             for index, player in enumerate(players, start=1)
         ]

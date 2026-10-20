@@ -5,9 +5,11 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
+from app.branding import TAGLINE, TOKEN_TEXT, bull_rank
 from app.keyboards.main_menu import (
     main_menu,
     back_menu,
+    token_menu,
     shop_menu,
     private_shop_link,
     private_protection_link,
@@ -25,125 +27,133 @@ from app.services.x_oauth_service import (
 
 router = Router()
 
+
 WELCOME_TEXT = (
-    "👑 <b>TRUMPTY ROYALE</b>\n"
-    "Earn competitive points, challenge rivals in group duels, and climb the "
-    "rankings. Take part in X post quizzes to earn more points.\n\n"
-    "👇 Choose an option below."
+    "🐂 <b>GOLDEN BULLRUN</b>\n"
+    f"<i>“{TAGLINE}”</i>\n\n"
+    "Welcome to Golden Bullrun, Bull.\n\n"
+    "Enter the arena, compete against other Bulls, earn Bullrun Points and "
+    "prove yourself worthy of becoming 🏆 <b>The Bull That Ran</b>.\n\n"
+    "👇 Choose your next move."
 )
 
 SECTIONS = {
     "about": (
-        "👑 <b>ABOUT TRUMPTY ROYALE</b>\n\n"
-        "TRUMPTY ROYALE is a Telegram game where players build competitive "
-        "points, challenge rivals in group duels, and climb the leaderboard.\n\n"
-        "🪙 Competitive points are gameplay points. Purchased credits are "
+        "🐂 <b>ABOUT GOLDEN BULLRUN</b>\n"
+        f"<i>“{TAGLINE}”</i>\n\n"
+        "Golden Bullrun is a Telegram game where every player is a Bull. "
+        "Bulls earn Bullrun Points, challenge rivals in the Bull Arena, and "
+        "climb the leaderboard. Win a battle and you are crowned "
+        "🏆 <b>The Bull That Ran</b>.\n\n"
+        "🪙 Bullrun Points are gameplay points. Purchased credits are "
         "tracked separately and do not increase your leaderboard rank.\n"
-        "🛡️ Points Protection has permanent progression ranks and can preserve "
-        "part of your points above the 10,000 baseline at a weekly reset.\n"
-        "🥊 Duels are played in any group where the bot is present.\n"
-        "X post quizzes award competitive points after a correct answer and "
-        "verified Like, Repost, Reply, and Follow actions.\n\n"
+        "🛡️ Bull Protection has permanent progression ranks and can preserve "
+        "part of your Bullrun Points above the 10,000 baseline at a weekly reset.\n"
+        "🥊 The Bull Arena is open in any group where the bot is present.\n"
+        "Bull Missions (X post quizzes) award Bullrun Points after a correct "
+        "answer and verified Like, Repost, Reply, and Follow actions.\n\n"
         "🎁 Activity counts across every group where the bot is present. Each "
-        "UTC day, the top five earn 500, 350, 250, 150, or 100 points.\n\n"
+        "UTC day, the top five Bulls earn 500, 350, 250, 150, or 100 Bullrun Points.\n\n"
         "Payments are verified on Solana. Never send a seed phrase or private key."
     ),
     "play": (
-        "⚔️ <b>ROYALE ARENA</b>\n\n"
-        "PvP is played right here in any group where the bot is present.\n\n"
-        "Challenge a player with:\n"
+        "⚔️ <b>BULL ARENA</b>\n\n"
+        "The Bull Arena is open in any group where the bot is present.\n\n"
+        "Challenge another Bull with:\n"
         "<code>/pvp @username 100</code>\n\n"
-        "Only the mentioned player can accept. Both wagers are reserved after "
+        "Only the mentioned Bull can accept. Both wagers are reserved after "
         "they accept. If they are not registered, they can tap the Start "
         "button in the group prompt to register.\n\n"
-        "X post quizzes are available with /missions in this group."
+        "Bull Missions are available with /missions in this group."
     ),
     "missions": (
-        "🎯 <b>X RAID MISSIONS</b>\n\n"
+        "🎯 <b>BULL MISSIONS</b>\n\n"
         "View the active X post quiz and submit your answer here in the group. "
-        "A correct answer earns 200 competitive points after your linked X "
+        "A correct answer earns 200 Bullrun Points after your linked X "
         "account completes the campaign's Like, Repost, Reply, and Follow actions."
     ),
     "leaderboard": (
-        "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
-        "Rankings are based on competitive point balances. Purchased credits "
+        "🏆 <b>TOP BULLS</b>\n\n"
+        "Rankings are based on Bullrun Points balances. Purchased credits "
         "are tracked separately and do not affect your position."
     ),
     "duel": (
-        "🥊 <b>PVP ARENA</b>\n\n"
-        "Duels are played in any group where the bot is present, not in private chat.\n\n"
-        "Challenge a registered player with:\n"
+        "🥊 <b>BULL ARENA</b>\n\n"
+        "Battles are played in any group where the bot is present, not in private chat.\n\n"
+        "Challenge a registered Bull with:\n"
         "<code>/pvp @username 100</code>\n\n"
-        "Both players must be registered. If your opponent is not registered, "
+        "Both Bulls must be registered. If your opponent is not registered, "
         "the group prompt gives them a button to open the bot and tap Start. "
-        "Wagers must be between 1 and 1,000,000 points. The challenged player "
-        "accepts the group challenge; only that mentioned player can accept, "
+        "Wagers must be between 1 and 1,000,000 Bullrun Points. The challenged Bull "
+        "accepts the group challenge; only that mentioned Bull can accept, "
         "and both wagers are then reserved.\n\n"
-        "Each player starts with 100 HP. Players take turns attacking for "
+        "Each Bull starts with 100 HP. Bulls take turns attacking for "
         "20 damage or using one guard per battle to reduce the next hit by "
-        "10. The first player to reach 0 HP loses and the winner takes both "
-        "stakes; the first turn is chosen at random. The challenge expires "
+        "10. The first Bull to reach 0 HP loses and the winner takes both "
+        "stakes and is crowned 🏆 <b>The Bull That Ran</b>; the first turn is "
+        "chosen at random. The challenge expires "
         "after 60 seconds. An inactive "
         "battle expires after 15 minutes and refunds both stakes. Either "
-        "player may forfeit during a battle.\n\n"
-        "Protection does not prevent duel losses."
+        "Bull may forfeit during a battle.\n\n"
+        "Protection does not prevent Bull Arena losses."
     ),
     "rewards": (
         "🎁 <b>DAILY ACTIVITY REWARDS</b>\n\n"
-        "The five highest activity scores earn competitive points at 00:00 UTC:\n"
+        "The five highest activity scores earn Bullrun Points at 00:00 UTC:\n"
         "🥇 1st: <b>500</b> · 🥈 2nd: <b>350</b> · 🥉 3rd: <b>250</b>\n"
         "4th: <b>150</b> · 5th: <b>100</b>\n\n"
         "Messages count across every group where the bot is present: one "
-        "qualifying message every 30 seconds, up to 20 per player per UTC day. "
-        "The score is global across groups. A completed duel adds 10 activity "
-        "score per player and a win adds 5 more, up to 5 scored duels daily. "
-        "Duels also give each player +25 points; the winner gets +50 extra, "
-        "up to 5 completed duels daily. PvP works in any group where the bot "
+        "qualifying message every 30 seconds, up to 20 per Bull per UTC day. "
+        "The score is global across groups. A completed battle adds 10 activity "
+        "score per Bull and a win adds 5 more, up to 5 scored battles daily. "
+        "Battles also give each Bull +25 Bullrun Points; the winner gets +50 extra, "
+        "up to 5 completed battles daily. PvP works in any group where the bot "
         "is present.\n\n"
         "Only message counts and timestamps are stored, not message text.\n\n"
-        "X post quizzes award 200 points for one correct answer per campaign. "
+        "Bull Missions award 200 Bullrun Points for one correct answer per campaign. "
         "A linked X account must Like and Repost the campaign post, Reply to "
         "it, and Follow its author before the points are awarded. "
         "Weekly token reward payouts are not available yet."
     ),
     "help": (
-        "📜 <b>TRUMPTY ROYALE — HOW TO PLAY</b>\n\n"
-        "<b>1. Register and check your points</b>\n"
+        "📜 <b>GOLDEN BULLRUN — HOW TO PLAY</b>\n\n"
+        "<b>1. Register and check your Bullrun Points</b>\n"
         "Send /start in a group with the bot or in the bot's private chat. "
-        "A new profile starts with 10,000 competitive points. Use /profile "
-        "to see your account or /balance to check your points. Only competitive "
-        "points are used for PvP stakes and rankings; purchased credits are separate.\n\n"
-        "<b>2. Challenge a player in the group</b>\n"
-        "PvP works in any active group where the bot is present. Send "
+        "A new Bull starts with 10,000 Bullrun Points. Use /profile "
+        "to see your Bull Profile or /balance to check your points. Only Bullrun "
+        "Points are used for Bull Arena stakes and rankings; purchased credits are separate.\n\n"
+        "<b>2. Challenge a Bull in the group</b>\n"
+        "The Bull Arena works in any active group where the bot is present. Send "
         "<code>/pvp @username amount</code>, for example "
         "<code>/pvp @player 100</code>. The amount is the stake from each "
-        "player and must be between 1 and 1,000,000 points. Both players need "
-        "enough competitive points. You cannot challenge yourself, bots, or "
-        "players already in another active match. If a target is not registered, "
+        "Bull and must be between 1 and 1,000,000 Bullrun Points. Both Bulls need "
+        "enough Bullrun Points. You cannot challenge yourself, bots, or "
+        "Bulls already in another active match. If a target is not registered, "
         "the bot gives them a Start button to register.\n\n"
         "<b>3. Accept, decline, and battle</b>\n"
         "The challenge is numbered and stays open for 60 seconds. Only the "
         "mentioned opponent can accept or decline. Neither stake is taken "
         "unless the opponent accepts; then both stakes are reserved. The "
-        "starting player is chosen at random. Each fighter starts with 100 HP "
-        "and takes turns. ATTACK deals 20 damage. Each player can use GUARD "
+        "starting Bull is chosen at random. Each Bull starts with 100 HP "
+        "and takes turns. ATTACK deals 20 damage. Each Bull can use GUARD "
         "once per battle to reduce the next incoming hit by 10. The first "
-        "fighter to reach 0 HP loses; the winner receives both reserved stakes. "
-        "Either fighter can forfeit, awarding the pot to the other player. "
+        "Bull to reach 0 HP loses; the winner receives both reserved stakes "
+        "and is crowned 🏆 The Bull That Ran. "
+        "Either Bull can forfeit, awarding the pot to the other. "
         "An inactive battle expires after 15 minutes and refunds both stakes.\n\n"
         "<b>4. Earn activity rewards</b>\n"
         "Activity is counted across registered groups. Qualifying messages "
-        "count at most once every 30 seconds, up to 20 per player per UTC day. "
+        "count at most once every 30 seconds, up to 20 per Bull per UTC day. "
         "At 00:00 UTC, the top five activity scores receive 500, 350, 250, "
-        "150, and 100 competitive points. Completed duels can also earn both "
-        "players +25 points and the winner +50 extra, for up to five completed "
-        "duels per player each day.\n\n"
-        "<b>5. Play X post quizzes</b>\n"
+        "150, and 100 Bullrun Points. Completed battles can also earn both "
+        "Bulls +25 Bullrun Points and the winner +50 extra, for up to five completed "
+        "battles per Bull each day.\n\n"
+        "<b>5. Complete Bull Missions</b>\n"
         "Use /missions to view the active X post and quiz. Read the post, tap "
         "the answer button, then reply with your answer. Before claiming, "
         "connect your X account and Like and Repost the campaign post, Reply "
         "to it, and Follow its author. After all four actions are verified, "
-        "a correct answer earns 200 competitive points once per campaign; "
+        "a correct answer earns 200 Bullrun Points once per campaign; "
         "you have up to three answer attempts. Use /unlinkx to disconnect. "
         "A group administrator can start a quiz with "
         "<code>/setraid https://x.com/name/status/POST_ID | question | answer</code> "
@@ -151,8 +161,8 @@ SECTIONS = {
         "<b>6. Shop and protect your account</b>\n"
         "Purchases and payment checkout happen in the bot's private chat, not "
         "in the group. Follow the bot's checkout instructions; payments are "
-        "verified before credits are added. Points Protection details, rank, "
-        "and price are shown in the menu. Protection does not prevent PvP "
+        "verified before credits are added. Bull Protection details, rank, "
+        "and price are shown in the menu. Protection does not prevent Bull Arena "
         "losses. Weekly token payouts are not available yet."
     ),
 }
@@ -162,13 +172,27 @@ def get_section_text(section: str) -> str:
     return SECTIONS[section]
 
 
+def profile_text(player: dict) -> str:
+    username = (
+        f"@{escape(player['username'])}" if player["username"] else "Not set"
+    )
+    return (
+        "🐂 <b>YOUR BULL PROFILE</b>\n\n"
+        f"Bull: <b>{escape(player['name'])}</b>\n"
+        f"Username: {username}\n"
+        f"💰 Bullrun Points: <b>{player['points']:,}</b>\n"
+        f"🎖️ Bull Rank: <b>{bull_rank(player['points'])}</b>\n"
+        f"🏆 Wins as The Bull That Ran: <b>{player.get('wins', 0):,}</b>"
+    )
+
+
 def group_play_text() -> str:
     return (
-        "⚔️ <b>GROUP PvP</b>\n\n"
-        "Challenge a player in this group with:\n"
+        "⚔️ <b>BULL ARENA</b>\n\n"
+        "Challenge a Bull in this group with:\n"
         "<code>/pvp @username 100</code>\n\n"
-        "Replace @username with their Telegram username and 1000 with the "
-        "points you want to stake. Only that player can accept the challenge. "
+        "Replace @username with their Telegram username and 100 with the "
+        "Bullrun Points you want to stake. Only that Bull can accept the challenge. "
         "If they are not registered yet, they can tap the Start button in the "
         "group prompt to register.\n\n"
         "Purchases are handled privately."
@@ -186,25 +210,25 @@ def get_payment_status_text() -> str:
 
 
 SHOP_TEXT = (
-    "🪙 <b>TRUMPTY ROYALE — POINTS SHOP</b>\n\n"
+    "🪙 <b>GOLDEN BULLRUN — BULLRUN SHOP</b>\n\n"
     "Choose a package to see its details.\n"
-    "Credits and competitive points are tracked separately.\n\n"
-    "⚡ <b>Starter:</b> 10,000 credits · 5,000 $TRUMPTY\n"
-    "⚔️ <b>Warrior:</b> 22,000 credits · 10,000 $TRUMPTY\n"
-    "🛡️ <b>Champion:</b> 36,000 credits · 15,000 $TRUMPTY\n"
-    "👑 <b>Royal:</b> 52,000 credits · 20,000 $TRUMPTY\n"
-    "💎 <b>Legend:</b> 70,000 credits · 25,000 $TRUMPTY\n\n"
-    "🛡️ <b>Points Protection:</b> starting at 30,000 $TRUMPTY for 7 days.\n"
-    "<i>Price and points preserved rise with permanent protection rank (max rank 5; 150,000 $TRUMPTY). It never prevents duel losses.</i>\n\n"
+    "Credits and Bullrun Points are tracked separately.\n\n"
+    "⚡ <b>Starter:</b> 10,000 credits · 5,000 $GOLD\n"
+    "⚔️ <b>Warrior:</b> 22,000 credits · 10,000 $GOLD\n"
+    "🛡️ <b>Champion:</b> 36,000 credits · 15,000 $GOLD\n"
+    "👑 <b>Royal:</b> 52,000 credits · 20,000 $GOLD\n"
+    "💎 <b>Legend:</b> 70,000 credits · 25,000 $GOLD\n\n"
+    "🛡️ <b>Bull Protection:</b> starting at 30,000 $GOLD for 7 days.\n"
+    "<i>Price and Bullrun Points preserved rise with permanent protection rank (max rank 5; 150,000 $GOLD). It never prevents Bull Arena losses.</i>\n\n"
     "Select an option below."
 )
 
 PROTECTION_TEXT = (
-    "🛡️ <b>POINTS PROTECTION</b>\n\n"
-    "Build a permanent protection rank to preserve more points at the weekly reset.\n\n"
-    "💎 Starting price: <b>30,000 $TRUMPTY</b>; each rank costs more, capped at <b>150,000 $TRUMPTY</b>.\n"
+    "🛡️ <b>BULL PROTECTION</b>\n\n"
+    "Build a permanent protection rank to preserve more Bullrun Points at the weekly reset.\n\n"
+    "💎 Starting price: <b>30,000 $GOLD</b>; each rank costs more, capped at <b>150,000 $GOLD</b>.\n"
     "⏳ Each activation lasts <b>7 days</b>; maximum rank: <b>5</b>.\n\n"
-    "Protection does not cover points lost in PvP or override other game rules.\n"
+    "Protection does not cover Bullrun Points lost in the Bull Arena or override other game rules.\n"
     "It must be renewed after expiry."
 )
 
@@ -228,15 +252,15 @@ async def send_protection_screen(target, telegram_id: int, edit: bool = False):
 
         expiry_text = expiry.strftime("%d %b %Y, %H:%M UTC")
         text = (
-            "🛡️ <b>POINTS PROTECTION</b>\n\n"
+            "🛡️ <b>BULL PROTECTION</b>\n\n"
             "🟢 <b>Status: ACTIVE</b>\n"
             f"🛡️ Rank: <b>{status['rank']}/5</b> · "
-            f"weekly points preserved: <b>{status['protected_percentage']}%</b> "
+            f"weekly Bullrun Points preserved: <b>{status['protected_percentage']}%</b> "
             "above 10,000\n"
-            f"💎 Next activation: <b>{status['price']:,} $TRUMPTY</b>\n"
+            f"💎 Next activation: <b>{status['price']:,} $GOLD</b>\n"
             f"⏳ Expires: <b>{expiry_text}</b>\n\n"
-            "The protected share is based on points above the 10,000 baseline.\n"
-            "PvP losses are not protected."
+            "The protected share is based on Bullrun Points above the 10,000 baseline.\n"
+            "Bull Arena losses are not protected."
         )
     else:
         text = (
@@ -244,7 +268,7 @@ async def send_protection_screen(target, telegram_id: int, edit: bool = False):
             + "\n\n"
             + f"🔴 <b>Status: INACTIVE</b>\n"
             f"🛡️ Permanent rank: <b>{status['rank']}/5</b>\n"
-            f"💎 Next activation: <b>{status['price']:,} $TRUMPTY</b>"
+            f"💎 Next activation: <b>{status['price']:,} $GOLD</b>"
         )
 
     text += f"\n\n{get_payment_status_text()}"
@@ -274,8 +298,8 @@ async def start_command(message: Message):
             return
         player = await register_player(message.from_user)
         text = (
-            f"👑 <b>Welcome, {escape(player['name'])}</b>\n"
-            f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
+            f"🐂 <b>Welcome back, {escape(player['name'])}</b>\n"
+            f"💰 Your Bullrun Points: <b>{player['points']:,}</b>\n\n"
             f"{group_play_text()}"
         )
         await message.answer(
@@ -309,7 +333,7 @@ async def start_command(message: Message):
             return
         await message.answer(
             "🔗 <b>Connect your X account</b>\n\n"
-            "Authorize TRUMPTY ROYALE to read your liked posts, reposts, "
+            "Authorize Golden Bullrun to read your liked posts, reposts, "
             "replies, follows, and public profile. The bot will never post "
             "or follow on your behalf.",
             reply_markup=x_authorization_menu(authorization_url),
@@ -324,8 +348,9 @@ async def start_command(message: Message):
         return
 
     await message.answer(
-        f"👑 <b>Welcome to TRUMPTY ROYALE, {player['name']}</b>\n\n"
-        f"💰 Balance: <b>{player['points']:,} points</b>\n\n"
+        f"🐂 <b>GOLDEN BULLRUN</b>\n<i>“{TAGLINE}”</i>\n\n"
+        f"Welcome to Golden Bullrun, {escape(player['name'])}.\n"
+        f"💰 Your Bullrun Points: <b>{player['points']:,}</b>\n\n"
         "👇 Choose your next move.",
         reply_markup=main_menu(),
         parse_mode="HTML",
@@ -353,12 +378,8 @@ async def profile_command(message: Message):
         await message.answer("Send /start first to register.")
         return
 
-    username = f"@{player['username']}" if player["username"] else "Not set"
     await message.answer(
-        "👤 <b>PLAYER PROFILE</b>\n\n"
-        f"Name: <b>{player['name']}</b>\n"
-        f"Username: {username}\n"
-        f"💰 Balance: <b>{player['points']:,} points</b>",
+        profile_text(player),
         reply_markup=back_menu(),
         parse_mode="HTML",
     )
@@ -372,7 +393,7 @@ async def balance_command(message: Message):
         return
 
     await message.answer(
-        f"💰 <b>Your balance:</b> {player['points']:,} points",
+        f"💰 <b>Your Bullrun Points:</b> {player['points']:,}",
         reply_markup=back_menu(),
         parse_mode="HTML",
     )
@@ -384,6 +405,16 @@ async def help_command(message: Message):
         get_section_text("help"),
         reply_markup=back_menu(),
         parse_mode="HTML",
+    )
+
+
+@router.message(Command("gold", "token"))
+async def token_command(message: Message):
+    await message.answer(
+        TOKEN_TEXT,
+        reply_markup=token_menu(),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
 
 
@@ -409,7 +440,7 @@ async def menu_callback(callback: CallbackQuery):
             )
         else:
             await callback.message.answer(
-                "🛡️ View Points Protection privately in the bot.",
+                "🛡️ View Bull Protection privately in the bot.",
                 reply_markup=private_protection_link(),
             )
         await callback.answer()
@@ -447,12 +478,8 @@ async def menu_callback(callback: CallbackQuery):
             )
             return
 
-        username = f"@{player['username']}" if player["username"] else "Not set"
         await callback.message.edit_text(
-            "👤 <b>PLAYER PROFILE</b>\n\n"
-            f"Name: <b>{player['name']}</b>\n"
-            f"Username: {username}\n"
-            f"💰 Balance: <b>{player['points']:,} points</b>",
+            profile_text(player),
             reply_markup=back_menu(),
             parse_mode="HTML",
         )
@@ -465,7 +492,7 @@ async def menu_callback(callback: CallbackQuery):
     elif section == "protect":
         if callback.message.chat.type != "private":
             await callback.answer(
-                "Open Points Protection in the bot's private chat.",
+                "Open Bull Protection in the bot's private chat.",
                 show_alert=True,
             )
             return
@@ -489,15 +516,15 @@ async def menu_callback(callback: CallbackQuery):
 
         if not players:
             leaderboard_text = (
-                "🏆 <b>HALL OF CHAMPIONS</b>\n\n"
-                "No players are registered yet. Send /start to join."
+                "🏆 <b>TOP BULLS</b>\n\n"
+                "No Bulls are registered yet. Send /start to join."
             )
         else:
             medals = {1: "🥇", 2: "🥈", 3: "🥉"}
             lines = [
-                "🏆 <b>HALL OF CHAMPIONS</b>",
+                "🏆 <b>TOP BULLS</b>",
                 "",
-                "Top players by competitive points:",
+                "Ranked by Bullrun Points:",
                 "",
             ]
             entries = []
@@ -505,7 +532,7 @@ async def menu_callback(callback: CallbackQuery):
             for player in players:
                 rank = player["rank"]
                 marker = medals.get(rank, f"{rank}.")
-                name = escape(player["name"] or "Player")
+                name = escape(player["name"] or "Bull")
                 if player["username"]:
                     display_name = f"{name} (@{escape(player['username'])})"
                 else:
@@ -513,7 +540,8 @@ async def menu_callback(callback: CallbackQuery):
 
                 entries.append(
                     f"{marker} <b>{display_name}</b>\n"
-                    f"   💰 <b>{player['points']:,}</b> points"
+                    f"   💰 <b>{player['points']:,}</b> Bullrun Points"
+                    f" · 🏆 {player.get('wins', 0):,} wins"
                 )
 
             leaderboard_text = (
@@ -521,7 +549,7 @@ async def menu_callback(callback: CallbackQuery):
                 + "\n\n"
                 + "\n\n".join(entries)
                 + "\n\n━━━━━━━━━━━━━━━━━━\n"
-                "🏅 Rankings use competitive points only.\n"
+                "🏅 Rankings use Bullrun Points only.\n"
                 "🪙 Purchased credits do not increase your rank."
             )
 
@@ -529,6 +557,13 @@ async def menu_callback(callback: CallbackQuery):
             leaderboard_text,
             reply_markup=back_menu(),
             parse_mode="HTML",
+        )
+    elif section == "token":
+        await callback.message.edit_text(
+            TOKEN_TEXT,
+            reply_markup=token_menu(),
+            parse_mode="HTML",
+            disable_web_page_preview=True,
         )
     elif section in SECTIONS:
         await callback.message.edit_text(
@@ -549,16 +584,16 @@ async def group_play_callback(callback: CallbackQuery):
         await callback.answer("This game post is unavailable.", show_alert=True)
         return
     if callback.message.chat.type == "private":
-        await callback.answer("Use /pvp in the game group to challenge a player.")
+        await callback.answer("Use /pvp in the game group to challenge a Bull.")
         return
 
     player = await register_player(callback.from_user)
     await callback.message.answer(
         f"⚔️ <b>THE ARENA IS OPEN, {escape(player['name'])}</b>\n\n"
-        "Challenge your rival here:\n"
+        "Challenge a rival Bull here:\n"
         "<code>/pvp @username 100</code>\n\n"
         "Replace the username and stake with your opponent and wager. "
-        "Only the mentioned player can accept. Both players need to register "
+        "Only the mentioned Bull can accept. Both Bulls need to register "
         "with /start in a group or in the bot.",
         reply_markup=private_shop_link(),
         parse_mode="HTML",

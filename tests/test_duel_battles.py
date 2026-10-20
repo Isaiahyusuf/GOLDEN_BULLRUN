@@ -270,3 +270,44 @@ def test_late_action_refunds_expired_battle_and_cannot_settle_twice():
             assert b.points == 10_000
 
     run_async(run())
+
+
+def test_wins_count_only_settled_battles_and_announcement_text():
+    from app.handlers.duels import bull_that_ran_text
+    from app.services.leaderboard_service import get_leaderboard
+    from app.services.points_service import get_player
+
+    async def run():
+        await reset_players()
+        expired_id = await new_accepted_duel()
+        async with SessionLocal() as session:
+            async with session.begin():
+                duel = await session.get(Duel, expired_id)
+                duel.last_activity_at = datetime.now(timezone.utc) - timedelta(
+                    minutes=16
+                )
+        assert [item["duel_id"] for item in await expire_stale_duels()] == [
+            expired_id
+        ]
+        assert (await get_player(PLAYER_A))["wins"] == 0
+
+        duel_id = await new_accepted_duel()
+        result = await forfeit_duel(duel_id, PLAYER_B, GROUP_ID)
+        assert result["winner_id"] == PLAYER_A
+
+        assert (await get_player(PLAYER_A))["wins"] == 1
+        assert (await get_player(PLAYER_B))["wins"] == 0
+        board = {p["telegram_id"]: p for p in await get_leaderboard(50)}
+        if PLAYER_A in board:
+            assert board[PLAYER_A]["wins"] == 1
+
+    run_async(run())
+
+    text = bull_that_ran_text(
+        7, "@winner", "@winner", "@loser",
+        {"challenger": 40, "opponent": 0}, 2_000,
+    )
+    assert text.startswith("🏆 THE BULL THAT RAN")
+    assert "Congratulations @winner." in text
+    assert "The Bull That Ran!" in text
+    assert "2,000 Bullrun Points" in text

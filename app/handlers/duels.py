@@ -92,15 +92,37 @@ def challenge_text(
     wager: int,
 ) -> str:
     return (
-        f"⚔️ TRUMPTY ROYALE — DUEL #{duel_id}\n\n"
-        "DUEL CHALLENGE\n\n"
+        f"🐂 BULL ARENA — BATTLE #{duel_id}\n\n"
+        "BULL CHALLENGE\n\n"
         f"Challenger: {challenger_name}\n"
         f"Opponent: {opponent_name}\n"
-        f"Stake: {wager:,} points each\n"
+        f"Stake: {wager:,} Bullrun Points each\n"
         "Battle mode: Turn-based (100 HP, 20 damage per attack; one guard "
         "reduces a hit by 10)\n"
         "Expires: 60 seconds\n\n"
         f"Only {opponent_name} can accept or decline."
+    )
+
+
+def bull_that_ran_text(
+    duel_id: int,
+    winner: str,
+    challenger: str,
+    opponent: str,
+    health: dict,
+    prize: int,
+    forfeit: bool = False,
+) -> str:
+    result = "wins by forfeit" if forfeit else "wins the battle"
+    return (
+        "🏆 THE BULL THAT RAN\n\n"
+        f"Congratulations {winner}. You won the battle and earned the title "
+        "of The Bull That Ran!\n"
+        "…which coin will lead the way? Today, it's you.\n\n"
+        f"🐂 Battle #{duel_id} · {winner} {result}\n"
+        f"{challenger}: {health['challenger']} HP\n"
+        f"{opponent}: {health['opponent']} HP\n"
+        f"💰 Prize: {prize:,} Bullrun Points"
     )
 
 
@@ -116,7 +138,7 @@ async def player_name(player_id: int) -> str:
 async def start_duel(message: Message, bot: Bot):
     if message.chat.type not in GROUP_TYPES:
         await message.answer(
-            "Start PvP challenges in a registered group where the bot is present."
+            "Start Bull Arena challenges in a registered group where the bot is present."
         )
         return
 
@@ -146,7 +168,7 @@ async def start_duel(message: Message, bot: Bot):
 
     if opponent is None:
         await message.answer(
-            "That player isn't registered yet. Ask them to tap Start below to "
+            "That Bull isn't registered yet. Ask them to tap Start below to "
             "register, then you can challenge them.",
             reply_markup=registration_keyboard(),
         )
@@ -249,12 +271,12 @@ async def accept_duel_button(callback: CallbackQuery):
     opponent = await player_name(opponent_id)
     first_player = await player_name(result["turn_player_id"])
     await callback.message.edit_text(
-        f"⚔️ DUEL #{duel_id} — BATTLE STARTED\n\n"
+        f"⚔️ BATTLE #{duel_id} — STARTED\n\n"
         f"{challenger}: {result['challenger_health']} HP\n"
         f"{opponent}: {result['opponent_health']} HP\n\n"
-        f"{first_player} goes first. Attack deals {ATTACK_DAMAGE} damage; each "
-        f"player may guard once to reduce the next hit by {GUARD_REDUCTION}.\n"
-        "Each player takes a turn. First to 0 HP loses.",
+        f"{first_player} goes first. Attack deals {ATTACK_DAMAGE} damage.\n"
+        f"Each Bull may guard once to reduce the next hit by {GUARD_REDUCTION}.\n"
+        "Bulls take turns. Last Bull standing becomes The Bull That Ran.",
         reply_markup=battle_keyboard(duel_id, 1),
     )
     await callback.answer("Battle started!")
@@ -324,10 +346,17 @@ async def move_button(callback: CallbackQuery):
     if result["status"] == "settled":
         winner = await player_name(result["winner_id"])
         await callback.message.edit_text(
-            f"🏆 DUEL #{duel_id} — {winner} WINS!\n\n"
-            f"{challenger}: {health[challenger_id]} HP\n"
-            f"{opponent}: {health[opponent_id]} HP\n"
-            f"Prize: {result['prize']:,} points."
+            bull_that_ran_text(
+                duel_id,
+                winner,
+                challenger,
+                opponent,
+                {
+                    "challenger": health[challenger_id],
+                    "opponent": health[opponent_id],
+                },
+                result["prize"],
+            )
         )
         await callback.answer("Battle complete!")
         return
@@ -340,7 +369,7 @@ async def move_button(callback: CallbackQuery):
             f"{result['damage']} damage dealt. {next_player}, it's your turn."
         )
     await callback.message.edit_text(
-        f"⚔️ DUEL #{duel_id} — TURN {result['turn']}\n\n"
+        f"⚔️ BATTLE #{duel_id} — TURN {result['turn']}\n\n"
         f"{challenger}: {health[challenger_id]} HP\n"
         f"{opponent}: {health[opponent_id]} HP\n\n"
         f"{action_text} Attack deals {ATTACK_DAMAGE}; guard once to reduce a hit by "
@@ -385,10 +414,18 @@ async def forfeit_button(callback: CallbackQuery):
     challenger = await player_name(challenger_id)
     opponent = await player_name(opponent_id)
     await callback.message.edit_text(
-        f"🏳️ DUEL #{duel_id} — FORFEIT\n\n"
-        f"{challenger}: {result['challenger_health']} HP\n"
-        f"{opponent}: {result['opponent_health']} HP\n"
-        f"{winner} wins. Prize: {result['prize']:,} points."
+        bull_that_ran_text(
+            duel_id,
+            winner,
+            challenger,
+            opponent,
+            {
+                "challenger": result["challenger_health"],
+                "opponent": result["opponent_health"],
+            },
+            result["prize"],
+            forfeit=True,
+        )
     )
     await callback.answer("Battle forfeited.")
 

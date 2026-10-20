@@ -167,7 +167,7 @@ async def submit_quiz_answer(
                 .with_for_update()
             )
             if player is None:
-                raise XRaidError("Send /start before claiming raid points.")
+                raise XRaidError("Send /start before claiming Bullrun Points.")
 
             claim_insert = insert(XRaidClaim).values(
                 campaign_id=campaign_id,
@@ -285,7 +285,7 @@ async def record_verified_actions(
                 )
 
             if await session.get(User, telegram_id) is None:
-                raise XRaidError("Send /start before claiming raid points.")
+                raise XRaidError("Send /start before claiming Bullrun Points.")
 
             await session.execute(
                 insert(XRaidClaim)

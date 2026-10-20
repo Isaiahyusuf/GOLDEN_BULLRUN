@@ -1,7 +1,17 @@
-# TRUMPTY ROYALE
+# GOLDEN BULLRUN
 
-Telegram group PvP game bot with points, duels, points protection,
-weekly earned-point rankings, and manually settled weekly rewards.
+_“…which coin will lead the way”_
+
+Telegram game bot where every player is a Bull. Bulls compete in the Bull
+Arena (group PvP), earn Bullrun Points, complete Bull Missions, climb the Top
+Bulls leaderboard, and the winner of each completed battle is crowned
+**The Bull That Ran**. Includes Bull Protection, weekly earned-point rankings,
+and manually settled weekly rewards.
+
+Rebrand note: only player-facing text changed. Database names, environment
+variables, and internal identifiers (for example `points`, `duels`,
+`trumpty_token_mint`) are unchanged. Wins are derived from settled battles
+(`duels.status = 'settled'` and `duels.winner_id`), so no migration is needed.
 
 ## Requirements
 
@@ -52,7 +62,7 @@ Do not expose `.env`, bot tokens, database credentials, or RPC credentials.
 X missions link to an X post and ask a question about it. Before points can be
 awarded, players must connect their X account, Like and Repost the campaign
 post, Reply to it, Follow its author, and answer the quiz correctly. A
-successful claim awards 200 competitive points once per campaign. Incorrect
+successful claim awards 200 Bullrun Points once per campaign. Incorrect
 answers allow up to three attempts; incomplete engagement does not consume an
 answer attempt. X access failures do not award points.
 

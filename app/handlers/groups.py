@@ -89,7 +89,7 @@ async def bot_group_membership(event: ChatMemberUpdated, bot: Bot):
                 post_text, keyboard = group_play_post()
                 await bot.send_message(
                     event.chat.id,
-                    f"👑 <b>TRUMPTY ROYALE connected</b>\n\n"
+                    f"🐂 <b>GOLDEN BULLRUN connected</b>\n\n"
                     "This group is registered. The arena is open.",
                     parse_mode="HTML",
                 )
@@ -125,7 +125,7 @@ async def group_status(message: Message):
         active = group.active if group else False
 
     await message.answer(
-        "👑 <b>TRUMPTY ROYALE — GROUP STATUS</b>\n\n"
+        "🐂 <b>GOLDEN BULLRUN — GROUP STATUS</b>\n\n"
         f"Group: <b>{message.chat.title or 'Unnamed group'}</b>\n"
         f"Registered: <b>{'Yes' if active else 'No'}</b>\n"
         f"Announcements: <b>{'On' if enabled else 'Off'}</b>\n\n"
@@ -150,7 +150,7 @@ async def enable_announcements(message: Message, bot: Bot):
             group.announcements_enabled = True
 
     await message.answer(
-        "🔔 TRUMPTY ROYALE announcements are now enabled for this group."
+        "🔔 Golden Bullrun announcements are now enabled for this group."
     )
 
 
@@ -168,7 +168,7 @@ async def disable_announcements(message: Message, bot: Bot):
             if group:
                 group.announcements_enabled = False
 
-    await message.answer("🔕 TRUMPTY ROYALE announcements are now disabled.")
+    await message.answer("🔕 Golden Bullrun announcements are now disabled.")
 
 
 @router.message(Command("groups"))
@@ -188,7 +188,7 @@ async def list_groups(message: Message):
         await message.answer("No Telegram groups have been registered yet.")
         return
 
-    lines = ["<b>REGISTERED TRUMPTY ROYALE GROUPS</b>", ""]
+    lines = ["<b>REGISTERED GOLDEN BULLRUN GROUPS</b>", ""]
     for group in groups:
         status = "Active" if group.active else "Bot removed"
         announcements = "On" if group.announcements_enabled else "Off"

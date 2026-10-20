@@ -64,14 +64,14 @@ async def begin_purchase_flow(
         next_rank = min(status["rank"] + 1, 5)
         product_details = (
             f"Rank after purchase: <b>{next_rank}/5</b>\n"
-            f"Points preserved at weekly reset: "
-            f"<b>{get_protected_percentage(next_rank)}%</b> of points above "
+            f"Bullrun Points preserved at weekly reset: "
+            f"<b>{get_protected_percentage(next_rank)}%</b> of Bullrun Points above "
             f"{10_000:,}.\n"
-            "PvP losses are not protected.\n\n"
+            "Bull Arena losses are not protected.\n\n"
         )
     await callback.message.edit_text(
         f"🪙 <b>{name}</b>\n\n"
-        f"Price: <b>{price:,} $TRUMPTY</b>\n"
+        f"Price: <b>{price:,} $GOLD</b>\n"
         f"{product_details}"
         "Send the public Solana wallet address you will pay from.\n"
         "Never send a seed phrase or private key.",
@@ -122,7 +122,7 @@ async def begin_protection_purchase(callback: CallbackQuery, state: FSMContext):
         callback,
         state,
         PROTECTION_PACKAGE_ID,
-        f"Points Protection · Rank {min(status['rank'] + 1, 5)}",
+        f"Bull Protection · Rank {min(status['rank'] + 1, 5)}",
         status["price"],
         None,
     )
@@ -158,7 +158,7 @@ async def receive_buyer_wallet(message: Message, state: FSMContext):
     await message.answer(
         "🧾 <b>Purchase created</b>\n\n"
         f"Package: <b>{purchase['package_name']}</b>\n"
-        f"Amount: <b>{purchase['token_amount']:,} $TRUMPTY</b>\n"
+        f"Amount: <b>{purchase['token_amount']:,} $GOLD</b>\n"
         f"{credits_text}"
         f"Official receiving wallet:\n<code>{purchase['recipient']}</code>\n\n"
         f"Purchase reference:\n<code>{purchase['reference']}</code>\n\n"
@@ -205,11 +205,11 @@ async def receive_purchase_signature(message: Message, state: FSMContext):
         confirmation = (
             "✅ <b>Protection activated</b>\n\n"
             f"Protection rank: <b>{result['protection_rank']}/5</b>\n"
-            f"Points preserved at weekly reset: "
+            f"Bullrun Points preserved at weekly reset: "
             f"<b>{get_protected_percentage(result['protection_rank'])}%</b> "
-            "of points above 10,000.\n"
+            "of Bullrun Points above 10,000.\n"
             f"Expires: <b>{expiry_text}</b>\n"
-            "PvP losses are not protected.\n\n"
+            "Bull Arena losses are not protected.\n\n"
         )
     else:
         confirmation = (

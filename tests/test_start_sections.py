@@ -21,7 +21,8 @@ def test_about_and_how_to_play_are_available_from_main_menu():
     assert "<code>/pvp @username amount</code>" in start.SECTIONS["help"]
     assert "any active group where the bot is present" in start.SECTIONS["help"]
     assert "00:00 UTC" in start.SECTIONS["help"]
-    assert "X post quizzes" in start.SECTIONS["help"]
+    assert "Bull Missions" in start.SECTIONS["help"]
+    assert "The Bull That Ran" in start.SECTIONS["help"]
     assert "Like and Repost the campaign post" in start.SECTIONS["help"]
     assert "Reply to it" in start.SECTIONS["help"]
     assert "Follow its author" in start.SECTIONS["help"]
@@ -30,7 +31,7 @@ def test_about_and_how_to_play_are_available_from_main_menu():
 
 def test_about_explains_daily_rewards_across_groups():
     assert "every group where the bot is present" in start.SECTIONS["about"]
-    assert "500, 350, 250, 150, or 100 points" in start.SECTIONS["about"]
+    assert "500, 350, 250, 150, or 100 Bullrun Points" in start.SECTIONS["about"]
     assert "𝕏 X" not in start.SECTIONS["about"]
 
 
@@ -45,7 +46,7 @@ def test_rewards_explains_all_group_activity_and_pvp():
 def test_static_leaderboard_copy_matches_current_balance_ranking():
     text = start.SECTIONS["leaderboard"]
 
-    assert "competitive point balances" in text
+    assert "Bullrun Points balances" in text
     assert "Purchased credits are tracked separately" in text
     assert "weekly standings" not in text
 
@@ -99,6 +100,7 @@ def test_leaderboard_uses_real_line_breaks_and_consistent_player_blocks():
                 "name": "Champion",
                 "username": "champion",
                 "points": 10_725,
+                "wins": 3,
             },
             {
                 "rank": 2,
@@ -117,10 +119,11 @@ def test_leaderboard_uses_real_line_breaks_and_consistent_player_blocks():
 
         text = callback.message.edit_text.await_args.args[0]
         assert "\\n" not in text
-        assert "🥇 <b>Champion (@champion)</b>\n   💰 <b>10,725</b> points" in text
-        assert "🥈 <b>Runner Up (@runnerup)</b>\n   💰 <b>10,000</b> points" in text
+        assert "🥇 <b>Champion (@champion)</b>\n   💰 <b>10,725</b> Bullrun Points" in text
+        assert "🥈 <b>Runner Up (@runnerup)</b>\n   💰 <b>10,000</b> Bullrun Points" in text
+        assert "🏆 3 wins" in text
         assert text.index("Champion") < text.index("Runner Up")
-        assert "🏅 Rankings use competitive points only." in text
+        assert "🏅 Rankings use Bullrun Points only." in text
 
     asyncio.run(run())
 
@@ -129,7 +132,7 @@ def test_duel_section_explains_group_pvp():
     text = start.get_section_text("duel")
 
     assert "any group where the bot is present" in text
-    assert "1,000,000 points" in text
+    assert "1,000,000 Bullrun Points" in text
     assert "100 HP" in text
     assert "20 damage" in text
     assert "one guard per battle" in text
@@ -140,7 +143,7 @@ def test_group_play_uses_local_group_pvp_and_keeps_shop_private():
     text = start.group_play_text()
 
     assert "/pvp @username 100" in text
-    assert "Only that player can accept" in text
+    assert "Only that Bull can accept" in text
     assert "Purchases are handled privately" in text
     assert "PLAY IN PRIVATE CHAT" not in text
 
@@ -200,3 +203,26 @@ def test_checkout_message_tracks_payment_configuration(monkeypatch):
 
     monkeypatch.setattr(start, "payments_configured", lambda: False)
     assert "currently unavailable" in start.get_payment_status_text()
+
+
+def test_gold_token_section_and_bull_rank():
+    from app.branding import TOKEN_ADDRESS, bull_rank
+    from app.keyboards.main_menu import token_menu
+
+    assert TOKEN_ADDRESS == "HHegCiT5d2i6oUnvBoxPP9dsYjJt1dKoxWw3rWegpump"
+    assert f"<code>{TOKEN_ADDRESS}</code>" in __import__(
+        "app.branding", fromlist=["TOKEN_TEXT"]
+    ).TOKEN_TEXT
+    urls = [b.url for row in token_menu().inline_keyboard for b in row if b.url]
+    assert "https://goldenbullrun.org" in urls
+    assert "menu:token" in [
+        b.callback_data
+        for row in start.main_menu().inline_keyboard
+        for b in row
+    ]
+    assert bull_rank(0) == "🐄 Calf"
+    assert bull_rank(10_000) == "🐂 Bull"
+    assert bull_rank(60_000) == "🏆 Bull Market Legend"
+    assert "Bull Rank" in start.profile_text(
+        {"name": "A", "username": None, "points": 20_000, "wins": 0}
+    )

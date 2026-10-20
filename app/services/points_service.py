@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from app.database.connection import SessionLocal
+from app.models.duel import Duel
 from app.models.user import User
 from app.models.transaction import PointTransaction
 async def register_player(telegram_user):
@@ -48,8 +49,14 @@ async def get_player(telegram_id):
         player = result.scalar_one_or_none()
         if player is None:
             return None
+        wins = await session.scalar(
+            select(func.count(Duel.id)).where(
+                Duel.status == "settled", Duel.winner_id == telegram_id
+            )
+        )
         return {
             "name": player.full_name,
             "username": player.username,
             "points": player.points,
+            "wins": wins or 0,
         }

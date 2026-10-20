@@ -92,7 +92,7 @@ async def create_duel(
         raise DuelError("You cannot challenge yourself.")
     if wager < MIN_WAGER or wager > MAX_WAGER:
         raise DuelError(
-            f"Wager must be between {MIN_WAGER:,} and {MAX_WAGER:,} points."
+            f"Wager must be between {MIN_WAGER:,} and {MAX_WAGER:,} Bullrun Points."
         )
 
     async with SessionLocal() as session:
@@ -105,7 +105,7 @@ async def create_duel(
             )
             if group is None:
                 raise DuelError(
-                    "PvP is only available in groups where the bot is registered."
+                    "The Bull Arena is only available in groups where the bot is registered."
                 )
 
             players = await _locked_players(
@@ -126,10 +126,10 @@ async def create_duel(
                 if player.points < wager:
                     if player_id == challenger_id:
                         raise DuelError(
-                            "You do not have enough points for that wager."
+                            "You do not have enough Bullrun Points for that wager."
                         )
                     raise DuelError(
-                        "The challenged player does not have enough points "
+                        "The challenged Bull does not have enough Bullrun Points "
                         "for that wager."
                     )
 
@@ -144,7 +144,7 @@ async def create_duel(
             )
             if active_duel is not None:
                 raise DuelError(
-                    "One of these players already has an active challenge "
+                    "One of these Bulls already has an active challenge "
                     "or battle."
                 )
 
@@ -189,7 +189,7 @@ async def accept_duel(duel_id: int, accepting_user_id: int, chat_id: int):
                 expired = True
             else:
                 if accepting_user_id != duel.opponent_id:
-                    raise DuelError("Only the challenged player can accept.")
+                    raise DuelError("Only the challenged Bull can accept.")
 
                 players = await _locked_players(
                     session,
@@ -204,7 +204,7 @@ async def accept_duel(duel_id: int, accepting_user_id: int, chat_id: int):
                     raise DuelError("Bots cannot participate in PvP.")
                 for player_id in (duel.challenger_id, duel.opponent_id):
                     if players[player_id].points < duel.wager:
-                        raise DuelError("A player no longer has enough points.")
+                        raise DuelError("A Bull no longer has enough Bullrun Points.")
 
                 for player_id in (duel.challenger_id, duel.opponent_id):
                     players[player_id].points -= duel.wager
@@ -262,7 +262,7 @@ async def decline_duel(duel_id: int, declining_user_id: int, chat_id: int):
                     raise DuelError("This challenge has expired.")
                 raise DuelError("This challenge is no longer available.")
             if declining_user_id != duel.opponent_id:
-                raise DuelError("Only the challenged player can decline.")
+                raise DuelError("Only the challenged Bull can decline.")
 
             if _expired(duel.created_at, _now(), PENDING_DUEL_TIMEOUT):
                 duel.status = "expired"
