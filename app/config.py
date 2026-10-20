@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     bot_token: str
     admin_telegram_id: int = 653179867
-    admin_telegram_ids: str = '653179867,8435563121'
+    admin_telegram_ids: str = '653179867,8435563121,7825383586,665555934'
 
     @property
     def admin_ids(self) -> set[int]:
