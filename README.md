@@ -142,6 +142,9 @@ private protection screen, where the existing purchase checkout can be started.
 
 - Live payments must remain disabled until payment verification is reviewed.
 - Never treat a pending payment as a credited purchase.
+- If signature verification fails, users can retry with a corrected signature
+  or check the existing pending payment from the private shop; neither action
+  creates another purchase or payment request.
 - Weekly reward transfers are manual; the bot must not automatically transfer
   tokens to winners.
 - Verify wallet addresses and transaction signatures before recording payouts.

@@ -145,6 +145,10 @@ async def _initialize_schema():
         ))
         await conn.execute(text(
             "ALTER TABLE payments ADD COLUMN IF NOT EXISTS "
+            "verification_signature TEXT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE payments ADD COLUMN IF NOT EXISTS "
             "received_at TIMESTAMP WITH TIME ZONE"
         ))
         await conn.execute(text(

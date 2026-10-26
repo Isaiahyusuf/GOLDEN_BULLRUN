@@ -1,11 +1,20 @@
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from solders.signature import Signature
 
 from app.config import settings
+from app.handlers import payments
 from app.services import solana_service
 from app.services.solana_service import (
     PaymentVerificationError,
     verify_token_payment,
+)
+from app.keyboards.main_menu import (
+    payment_verification_error_menu,
+    shop_menu,
 )
 
 
@@ -225,6 +234,93 @@ def test_invalid_block_time_is_rejected(value):
 
     with pytest.raises(PaymentVerificationError, match="timestamp"):
         block_time_to_utc(value)
+
+
+def test_payment_recovery_keyboard_offers_retry_check_and_back():
+    buttons = [
+        button
+        for row in payment_verification_error_menu().inline_keyboard
+        for button in row
+    ]
+
+    assert [button.text for button in buttons] == [
+        "Retry with Correct Signature",
+        "Check Existing Payment",
+        "Back to Payments",
+    ]
+    assert [button.callback_data for button in buttons] == [
+        "payment:retry_signature",
+        "payment:check_existing",
+        "payment:back",
+    ]
+
+
+def test_shop_offers_existing_payment_check():
+    buttons = [
+        button
+        for row in shop_menu().inline_keyboard
+        for button in row
+    ]
+
+    assert any(
+        button.text == "Check Existing Payment"
+        and button.callback_data == "payment:check_existing"
+        for button in buttons
+    )
+
+
+def test_check_existing_payment_reverifies_saved_signature():
+    class FakeState:
+        async def get_data(self):
+            return {"purchase_reference": "existing-reference"}
+
+        update_data = AsyncMock()
+        set_state = AsyncMock()
+        clear = AsyncMock()
+
+    callback = SimpleNamespace(
+        message=SimpleNamespace(
+            chat=SimpleNamespace(type="private"),
+            edit_text=AsyncMock(),
+        ),
+        from_user=SimpleNamespace(id=12345),
+        answer=AsyncMock(),
+    )
+    state = FakeState()
+    result = {
+        "package_id": "1",
+        "credits": 10_000,
+        "purchased_credits": 10_000,
+        "signature": "verified-signature",
+    }
+
+    async def run():
+        with (
+            patch.object(
+                payments,
+                "get_pending_purchase",
+                new=AsyncMock(return_value={
+                    "reference": "existing-reference",
+                    "verification_signature": "previous-signature",
+                }),
+            ),
+            patch.object(
+                payments,
+                "submit_purchase_signature",
+                new=AsyncMock(return_value=result),
+            ) as submit_signature,
+        ):
+            await payments.check_existing_payment(callback, state)
+
+        submit_signature.assert_awaited_once_with(
+            12345,
+            "existing-reference",
+            None,
+        )
+        assert "Payment verified" in callback.message.edit_text.await_args.args[0]
+        state.clear.assert_awaited_once()
+
+    asyncio.run(run())
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import BigInteger, DateTime, Integer, Numeric, String
+from sqlalchemy import BigInteger, DateTime, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.connection import Base
@@ -28,6 +28,9 @@ class Payment(Base):
     credits: Mapped[int] = mapped_column(Integer)
     signature: Mapped[str | None] = mapped_column(
         String(100), unique=True, index=True, nullable=True
+    )
+    verification_signature: Mapped[str | None] = mapped_column(
+        Text, nullable=True
     )
     status: Mapped[str] = mapped_column(
         String(24), default="pending", nullable=False

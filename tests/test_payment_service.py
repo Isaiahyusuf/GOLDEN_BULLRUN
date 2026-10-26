@@ -292,10 +292,11 @@ def test_verified_payment_credits_once_and_rejects_reuse(monkeypatch):
     asyncio.run(run())
 
 
-def test_failed_verification_does_not_credit_or_complete_purchase(
+def test_failed_attempts_can_be_replaced_and_payment_credits_only_once(
     monkeypatch,
 ):
     import asyncio
+    from datetime import datetime, timezone
 
     from sqlalchemy import delete, select
 
@@ -305,14 +306,33 @@ def test_failed_verification_does_not_credit_or_complete_purchase(
     from app.services.solana_service import PaymentVerificationError
 
     telegram_id = 880009992
-    signature = "test-payment-service-signature-failure"
+    signatures = {
+        "wrong-signature-1": "The transaction signature is invalid.",
+        "wrong-signature-2": "The transaction signature is invalid.",
+        "unconfirmed-signature": (
+            "The transaction is not finalized or could not be found."
+        ),
+        "failed-signature": "The on-chain transaction failed.",
+        "rpc-signature": "Could not safely verify the transaction with Solana.",
+    }
+    correct_signature = "test-payment-service-signature-success"
     buyer_wallet = "Vote111111111111111111111111111111111111111"
     reference = "test-verification-failure-reference"
+    verification_attempts = []
 
     monkeypatch.setattr(payment_service, "payments_configured", lambda: True)
 
-    async def fake_verify(*args, **kwargs):
-        raise PaymentVerificationError("Test verification failure")
+    async def fake_verify(signature, expected_tokens, wallet):
+        verification_attempts.append(signature)
+        assert expected_tokens == 5000
+        assert wallet == buyer_wallet
+        if signature in signatures:
+            raise PaymentVerificationError(signatures[signature])
+        assert signature == correct_signature
+        return {
+            "signature": signature,
+            "block_time": 1_700_000_000,
+        }
 
     monkeypatch.setattr(
         payment_service, "verify_token_payment", fake_verify
@@ -352,12 +372,21 @@ def test_failed_verification_does_not_credit_or_complete_purchase(
                         )
                     )
 
+            for signature, error in signatures.items():
+                with pytest.raises(
+                    payment_service.PaymentServiceError,
+                    match=error,
+                ):
+                    await payment_service.submit_purchase_signature(
+                        telegram_id, reference, signature
+                    )
+
             with pytest.raises(
                 payment_service.PaymentServiceError,
-                match="Test verification failure",
+                match="Could not safely verify",
             ):
                 await payment_service.submit_purchase_signature(
-                    telegram_id, reference, signature
+                    telegram_id, reference, None
                 )
 
             async with SessionLocal() as session:
@@ -370,8 +399,48 @@ def test_failed_verification_does_not_credit_or_complete_purchase(
                 assert user.purchased_credits == 0
                 assert payment.status == "pending"
                 assert payment.signature is None
+                assert payment.verification_signature == "rpc-signature"
                 assert payment.received_at is None
                 assert payment.credited_at is None
+
+            result = await payment_service.submit_purchase_signature(
+                telegram_id, reference, correct_signature
+            )
+            assert result["credits"] == 10000
+            assert result["purchased_credits"] == 10000
+
+            with pytest.raises(
+                payment_service.PaymentServiceError,
+                match="already been processed",
+            ):
+                await payment_service.submit_purchase_signature(
+                    telegram_id, reference, correct_signature
+                )
+
+            async with SessionLocal() as session:
+                user = await session.get(User, telegram_id)
+                payment = await session.scalar(
+                    select(Payment).where(
+                        Payment.purchase_reference == reference
+                    )
+                )
+                assert user.purchased_credits == 10000
+                assert payment.status == "credited"
+                assert payment.signature == correct_signature
+                assert payment.verification_signature is None
+                assert payment.received_at == datetime.fromtimestamp(
+                    1_700_000_000, tz=timezone.utc
+                )
+                assert payment.credited_at is not None
+            assert verification_attempts == [
+                "wrong-signature-1",
+                "wrong-signature-2",
+                "unconfirmed-signature",
+                "failed-signature",
+                "rpc-signature",
+                "rpc-signature",
+                correct_signature,
+            ]
         finally:
             async with SessionLocal() as session:
                 async with session.begin():

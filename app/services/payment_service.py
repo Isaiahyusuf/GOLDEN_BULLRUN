@@ -138,14 +138,45 @@ async def create_purchase_intent(
     return result
 
 
+async def get_pending_purchase(
+    telegram_id: int,
+    purchase_reference: str | None = None,
+) -> dict | None:
+    async with SessionLocal() as session:
+        statement = select(Payment).where(
+            Payment.telegram_id == telegram_id,
+            Payment.status == "pending",
+        )
+        if purchase_reference is not None:
+            statement = statement.where(
+                Payment.purchase_reference == purchase_reference
+            )
+        else:
+            statement = statement.order_by(
+                Payment.created_at.desc(), Payment.id.desc()
+            )
+
+        payment = await session.scalar(statement.limit(1))
+
+    if payment is None:
+        return None
+
+    return {
+        "reference": payment.purchase_reference,
+        "verification_signature": payment.verification_signature,
+    }
+
+
 async def submit_purchase_signature(
     telegram_id: int,
     purchase_reference: str,
-    signature: str,
+    signature: str | None,
 ) -> dict:
     if not payments_configured():
         raise PaymentServiceError("Payments are currently disabled.")
 
+    verification_error = None
+    result = None
     try:
         async with SessionLocal() as session:
             async with session.begin():
@@ -181,56 +212,77 @@ async def submit_purchase_signature(
                         "This purchase has no registered buyer wallet. Start a new checkout."
                     )
 
+                if signature is not None:
+                    payment.verification_signature = signature.strip()
+                signature_to_verify = payment.verification_signature
+                if not signature_to_verify:
+                    raise PaymentServiceError(
+                        "No transaction signature has been submitted for this payment yet."
+                    )
+
                 existing = await session.scalar(
-                    select(Payment.id).where(Payment.signature == signature)
+                    select(Payment.id).where(
+                        Payment.signature == signature_to_verify
+                    )
                 )
                 if existing is not None:
                     raise PaymentServiceError(
                         "That transaction signature has already been submitted."
                     )
 
-                verification = await verify_token_payment(
-                    signature,
-                    int(payment.token_amount),
-                    payment.buyer_wallet,
-                )
-                received_at = block_time_to_utc(verification["block_time"])
-                now = datetime.now(timezone.utc)
-
-                payment.signature = verification["signature"]
-                payment.status = "credited"
-                payment.verified_at = now
-                payment.received_at = received_at
-                payment.credited_at = now
-
-                if payment.package_id == PROTECTION_PACKAGE_ID:
-                    expires_at = extend_protection(user, now)
-                    session.add(
-                        PointTransaction(
-                            telegram_id=telegram_id,
-                            amount=0,
-                            reason=(
-                                f"protection_rank:{user.protection_rank}:"
-                                f"{payment.purchase_reference}"
-                            ),
-                        )
+                try:
+                    verification = await verify_token_payment(
+                        signature_to_verify,
+                        int(payment.token_amount),
+                        payment.buyer_wallet,
                     )
-                    protection_rank = user.protection_rank
+                    received_at = block_time_to_utc(verification["block_time"])
+                except PaymentVerificationError as exc:
+                    verification_error = exc
                 else:
-                    user.purchased_credits += payment.credits
-                    expires_at = None
-                    protection_rank = None
+                    now = datetime.now(timezone.utc)
 
-                result = {
-                    "package_id": payment.package_id,
-                    "credits": payment.credits,
-                    "purchased_credits": user.purchased_credits,
-                    "signature": verification["signature"],
-                    "received_at": received_at,
-                    "protection_expires_at": expires_at,
-                    "protection_rank": protection_rank,
-                }
+                    payment.signature = verification["signature"]
+                    payment.verification_signature = None
+                    payment.status = "credited"
+                    payment.verified_at = now
+                    payment.received_at = received_at
+                    payment.credited_at = now
 
+                    if payment.package_id == PROTECTION_PACKAGE_ID:
+                        expires_at = extend_protection(user, now)
+                        session.add(
+                            PointTransaction(
+                                telegram_id=telegram_id,
+                                amount=0,
+                                reason=(
+                                    f"protection_rank:{user.protection_rank}:"
+                                    f"{payment.purchase_reference}"
+                                ),
+                            )
+                        )
+                        protection_rank = user.protection_rank
+                    else:
+                        user.purchased_credits += payment.credits
+                        expires_at = None
+                        protection_rank = None
+
+                    result = {
+                        "package_id": payment.package_id,
+                        "credits": payment.credits,
+                        "purchased_credits": user.purchased_credits,
+                        "signature": verification["signature"],
+                        "received_at": received_at,
+                        "protection_expires_at": expires_at,
+                        "protection_rank": protection_rank,
+                    }
+
+        if verification_error is not None:
+            raise PaymentServiceError(str(verification_error)) from verification_error
+        if result is None:
+            raise PaymentServiceError(
+                "Payment verification did not produce a result."
+            )
         return result
 
     except IntegrityError as exc:

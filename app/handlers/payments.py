@@ -10,10 +10,16 @@ from app.services.payment_service import (
     PROTECTION_PACKAGE_ID,
     PaymentServiceError,
     create_purchase_intent,
+    get_pending_purchase,
     submit_purchase_signature,
 )
 from app.services.solana_service import payments_configured
-from app.keyboards.main_menu import payment_unavailable_menu
+from app.keyboards.main_menu import (
+    payment_signature_prompt_menu,
+    payment_unavailable_menu,
+    payment_verification_error_menu,
+    pending_payment_menu,
+)
 from app.services.protection_service import (
     get_protected_percentage,
     get_protection_status,
@@ -26,6 +32,56 @@ router = Router()
 class PurchaseFlow(StatesGroup):
     waiting_for_wallet = State()
     waiting_for_signature = State()
+
+
+def payment_confirmation_text(result: dict) -> str:
+    if result["package_id"] == PROTECTION_PACKAGE_ID:
+        expires_at = result["protection_expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expiry_text = expires_at.strftime("%d %b %Y, %H:%M UTC")
+        return (
+            "✅ <b>Protection activated</b>\n\n"
+            f"Protection rank: <b>{result['protection_rank']}/5</b>\n"
+            f"Bullrun Points preserved at weekly reset: "
+            f"<b>{get_protected_percentage(result['protection_rank'])}%</b> "
+            "of Bullrun Points above 10,000.\n"
+            f"Expires: <b>{expiry_text}</b>\n"
+            "Bull Arena losses are not protected.\n\n"
+            f"Transaction:\n<code>{result['signature']}</code>"
+        )
+
+    return (
+        "✅ <b>Payment verified</b>\n\n"
+        f"Credits added: <b>{result['credits']:,}</b>\n"
+        f"Purchased credits balance: <b>{result['purchased_credits']:,}</b>\n\n"
+        f"Transaction:\n<code>{result['signature']}</code>"
+    )
+
+
+def payment_error_text(error: PaymentServiceError) -> str:
+    return (
+        "Payment not credited: The transaction signature could not be verified.\n\n"
+        f"Details: {error}\n\n"
+        "If you’ve already sent tokens, do not pay again."
+    )
+
+
+async def pending_purchase_reference(
+    telegram_id: int,
+    state: FSMContext,
+) -> tuple[str | None, dict | None]:
+    data = await state.get_data()
+    reference = data.get("purchase_reference")
+    purchase = await get_pending_purchase(telegram_id, reference)
+    if purchase is None and reference is None:
+        purchase = await get_pending_purchase(telegram_id)
+
+    if purchase is not None:
+        reference = purchase["reference"]
+        await state.update_data(purchase_reference=reference)
+
+    return reference, purchase
 
 
 async def begin_purchase_flow(
@@ -191,34 +247,111 @@ async def receive_purchase_signature(message: Message, state: FSMContext):
         )
     except PaymentServiceError as exc:
         await message.answer(
-            f"Payment not credited: {exc}\n\n"
-            "If you already sent tokens, do not pay again until the transaction is checked."
+            payment_error_text(exc),
+            reply_markup=payment_verification_error_menu(),
         )
         return
 
     await state.clear()
-    if result["package_id"] == PROTECTION_PACKAGE_ID:
-        expires_at = result["protection_expires_at"]
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        expiry_text = expires_at.strftime("%d %b %Y, %H:%M UTC")
-        confirmation = (
-            "✅ <b>Protection activated</b>\n\n"
-            f"Protection rank: <b>{result['protection_rank']}/5</b>\n"
-            f"Bullrun Points preserved at weekly reset: "
-            f"<b>{get_protected_percentage(result['protection_rank'])}%</b> "
-            "of Bullrun Points above 10,000.\n"
-            f"Expires: <b>{expiry_text}</b>\n"
-            "Bull Arena losses are not protected.\n\n"
-        )
-    else:
-        confirmation = (
-            "✅ <b>Payment verified</b>\n\n"
-            f"Credits added: <b>{result['credits']:,}</b>\n"
-            f"Purchased credits balance: <b>{result['purchased_credits']:,}</b>\n\n"
-        )
-
     await message.answer(
-        confirmation + f"Transaction:\n<code>{result['signature']}</code>",
+        payment_confirmation_text(result),
         parse_mode="HTML",
     )
+
+
+@router.callback_query(F.data == "payment:retry_signature")
+async def retry_purchase_signature(callback: CallbackQuery, state: FSMContext):
+    if callback.message is None or callback.message.chat.type != "private":
+        await callback.answer(
+            "Payment recovery is available in the bot's private chat.",
+            show_alert=True,
+        )
+        return
+
+    reference, purchase = await pending_purchase_reference(
+        callback.from_user.id,
+        state,
+    )
+    if reference is None or purchase is None:
+        await callback.answer(
+            "No pending payment was found. Check your balance before starting another purchase.",
+            show_alert=True,
+        )
+        return
+
+    await state.set_state(PurchaseFlow.waiting_for_signature)
+    await callback.message.edit_text(
+        "Send the correct transaction signature for your existing payment.\n\n"
+        "Your purchase reference and expected payment details are unchanged. "
+        "If you’ve already sent tokens, do not pay again.",
+        reply_markup=payment_signature_prompt_menu(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "payment:check_existing")
+async def check_existing_payment(callback: CallbackQuery, state: FSMContext):
+    if callback.message is None or callback.message.chat.type != "private":
+        await callback.answer(
+            "Payment recovery is available in the bot's private chat.",
+            show_alert=True,
+        )
+        return
+
+    reference, purchase = await pending_purchase_reference(
+        callback.from_user.id,
+        state,
+    )
+    if reference is None or purchase is None:
+        await callback.answer(
+            "No pending payment was found. Check your balance before starting another purchase.",
+            show_alert=True,
+        )
+        return
+
+    await state.set_state(PurchaseFlow.waiting_for_signature)
+    if not purchase["verification_signature"]:
+        await callback.message.edit_text(
+            "Your existing payment is still pending and no signature has been "
+            "submitted yet. Send the signature for the payment you already made.\n\n"
+            "Do not create another purchase or pay again.",
+            reply_markup=payment_signature_prompt_menu(),
+        )
+        await callback.answer()
+        return
+
+    try:
+        result = await submit_purchase_signature(
+            callback.from_user.id,
+            reference,
+            None,
+        )
+    except PaymentServiceError as exc:
+        await callback.message.edit_text(
+            payment_error_text(exc),
+            reply_markup=payment_verification_error_menu(),
+        )
+    else:
+        await state.clear()
+        await callback.message.edit_text(
+            payment_confirmation_text(result),
+            parse_mode="HTML",
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "payment:back")
+async def back_to_pending_payment(callback: CallbackQuery, state: FSMContext):
+    if callback.message is None or callback.message.chat.type != "private":
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        "🪙 <b>Existing payment</b>\n\n"
+        "Your purchase is still pending and has not been removed. "
+        "You can retry with a corrected signature or check the signature already submitted. "
+        "Do not pay again.",
+        reply_markup=pending_payment_menu(),
+        parse_mode="HTML",
+    )
+    await callback.answer()

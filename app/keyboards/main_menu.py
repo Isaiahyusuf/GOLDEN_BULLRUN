@@ -122,6 +122,10 @@ def shop_menu():
             [InlineKeyboardButton(text="👑 Royal · 20,000 $GOLD", callback_data="buy:4")],
             [InlineKeyboardButton(text="💎 Legend · 25,000 $GOLD", callback_data="buy:5")],
             [InlineKeyboardButton(text="🛡️ Bull Protection · 30,000 $GOLD", callback_data="menu:protect")],
+            [InlineKeyboardButton(
+                text="Check Existing Payment",
+                callback_data="payment:check_existing",
+            )],
             [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")],
         ]
     )
@@ -183,5 +187,51 @@ def payment_unavailable_menu():
         inline_keyboard=[
             [InlineKeyboardButton(text="⬅️ BACK TO SHOP", callback_data="menu:shop")],
             [InlineKeyboardButton(text="🏠 MAIN MENU", callback_data="menu:home")],
+        ]
+    )
+
+
+def payment_verification_error_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Retry with Correct Signature",
+                callback_data="payment:retry_signature",
+            )],
+            [InlineKeyboardButton(
+                text="Check Existing Payment",
+                callback_data="payment:check_existing",
+            )],
+            [InlineKeyboardButton(
+                text="Back to Payments",
+                callback_data="payment:back",
+            )],
+        ]
+    )
+
+
+def payment_signature_prompt_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Back to Payments",
+                callback_data="payment:back",
+            )]
+        ]
+    )
+
+
+def pending_payment_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Retry with Correct Signature",
+                callback_data="payment:retry_signature",
+            )],
+            [InlineKeyboardButton(
+                text="Check Existing Payment",
+                callback_data="payment:check_existing",
+            )],
+            [InlineKeyboardButton(text="⬅️ BACK TO SHOP", callback_data="menu:shop")],
         ]
     )
